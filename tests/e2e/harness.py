@@ -315,19 +315,28 @@ class WaterfallEngine:
 
         net_distributable = distributable_gross - platform_fee
 
-        # Fractional investor distribution (Pro-Rata)
-        payouts: Dict[str, int] = {}
-        allocated_so_far = 0
+        # Fractional investor distribution via Largest Remainder (Hare-Niemeyer / Hamilton) Method
+        base_payouts: Dict[str, int] = {}
+        fractional_remainders: List[Tuple[int, str]] = []
+        total_base = 0
 
         for inv in investors:
-            share = round((net_distributable * inv.allocation_weight_bps) / 10000)
-            payouts[inv.investor_id] = share
-            allocated_so_far += share
+            scaled_product = net_distributable * inv.allocation_weight_bps
+            base = scaled_product // 10000
+            fraction = scaled_product % 10000
+            base_payouts[inv.investor_id] = base
+            total_base += base
+            fractional_remainders.append((fraction, inv.investor_id))
 
-        # Remainder cent allocation to first investor (deterministic tie-breaking)
-        remainder = net_distributable - allocated_so_far
-        first_investor_id = investors[0].investor_id
-        payouts[first_investor_id] += remainder
+        unassigned_cents = net_distributable - total_base
+        fractional_remainders.sort(key=lambda item: (item[0], item[1]), reverse=True)
+
+        for i in range(unassigned_cents):
+            winner_id = fractional_remainders[i][1]
+            base_payouts[winner_id] += 1
+
+        payouts = base_payouts
+        remainder = unassigned_cents
 
         return WaterfallResult(
             collected_amount=collected_amount,

@@ -341,11 +341,13 @@ class EmpiricalWaterfallStressOracle:
     @staticmethod
     def run_property_random_trials(num_trials: int = 1000) -> Dict:
         """
-        Fuzzes WaterfallEngine across 1,000 random collections, investor sizes,
+        Fuzzes WaterfallEngine across random collections, investor sizes,
         interest/penalty dues, and fee rates.
+        Includes dedicated small-amount micro-collection fuzzing (1 to 50 cents)
+        across 5 to 20 investors.
         Checks:
         1. Conservation of money: total_distributed == collected_amount
-        2. Non-negative investor payouts: investor_payouts >= 0
+        2. Non-negative investor payouts: investor_payouts >= 0 (asserted on every trial)
         3. Rounding remainder conservation
         """
         engine = WaterfallEngine()
@@ -357,23 +359,37 @@ class EmpiricalWaterfallStressOracle:
         random.seed(42)
 
         for trial in range(num_trials):
-            # Random number of investors (1 to 20)
-            num_investors = random.randint(1, 20)
-            # Partition 10,000 basis points randomly across investors
-            cuts = sorted(random.sample(range(1, 10000), num_investors - 1)) if num_investors > 1 else []
-            weights = []
-            prev = 0
-            for c in cuts:
-                weights.append(c - prev)
-                prev = c
-            weights.append(10000 - prev)
+            # Include small-amount fuzzing (1 to 50 cents) across 5 to 20 investors
+            if trial < num_trials // 2:
+                num_investors = random.randint(5, 20)
+                collected = random.randint(1, 50)
+                principal_due = random.randint(0, 50)
+                interest_due = random.randint(0, 25)
+                penalty_due = random.randint(0, 10)
+            else:
+                # Full-spectrum macro/micro fuzzing ($0.01 to $10,000.00)
+                num_investors = random.randint(1, 20)
+                collected = random.randint(1, 1_000_000)
+                principal_due = random.randint(0, 1_000_000)
+                interest_due = random.randint(0, 500_000)
+                penalty_due = random.randint(0, 100_000)
+
+            # Partition 10,000 basis points across investors
+            if trial % 3 == 0:
+                # Uniform / equal weights (stressing repeated identical fractional remainders)
+                base_w = 10000 // num_investors
+                rem_w = 10000 % num_investors
+                weights = [base_w + (1 if i < rem_w else 0) for i in range(num_investors)]
+            else:
+                cuts = sorted(random.sample(range(1, 10000), num_investors - 1)) if num_investors > 1 else []
+                weights = []
+                prev = 0
+                for c in cuts:
+                    weights.append(c - prev)
+                    prev = c
+                weights.append(10000 - prev)
 
             investors = [InvestorShare(f"inv_{i}", w) for i, w in enumerate(weights)]
-
-            collected = random.randint(1, 1_000_000)  # $0.01 to $10,000.00
-            principal_due = random.randint(0, 1_000_000)
-            interest_due = random.randint(0, 500_000)
-            penalty_due = random.randint(0, 100_000)
             platform_fee_bps = random.randint(0, 500)  # 0% to 5%
             tax_rate_bps = random.randint(0, 2000)     # 0% to 20%
 
@@ -387,6 +403,14 @@ class EmpiricalWaterfallStressOracle:
                     platform_fee_bps=platform_fee_bps,
                     tax_rate_bps=tax_rate_bps,
                     investors=investors
+                )
+
+                # Assert non-negative investor payouts on every trial
+                assert all(amt >= 0 for amt in res.investor_payouts.values()), (
+                    f"Trial {trial}: Negative investor payout detected in {res.investor_payouts}"
+                )
+                assert res.rounding_remainder >= 0, (
+                    f"Trial {trial}: Negative rounding remainder {res.rounding_remainder}"
                 )
 
                 # Check 1: Negative investor payouts
@@ -418,6 +442,13 @@ class EmpiricalWaterfallStressOracle:
                         "tax": res.withholding_tax
                     })
 
+            except AssertionError as ae:
+                negative_payout_cases.append({
+                    "trial": trial,
+                    "collected": collected,
+                    "error": str(ae)
+                })
+                raise
             except Exception as e:
                 leak_cases.append({
                     "trial": trial,
@@ -444,8 +475,12 @@ class EmpiricalWaterfallStressOracle:
             (1, [3333, 3333, 3334]),
             (2, [3333, 3333, 3334]),
             (3, [3333, 3333, 3334]),
-            (7, [1428, 1428, 1428, 1428, 1428, 1428, 1432]),
+            (4, [1428] * 6 + [1432]),
+            (6, [1000] * 10),
+            (6, [909] * 10 + [910]),
+            (7, [1428] * 6 + [1432]),
             (10, [1000] * 10),
+            (11, [500] * 20),
             (100, [333, 333, 334] + [1000] * 9)
         ]
 
@@ -462,11 +497,14 @@ class EmpiricalWaterfallStressOracle:
                 investors=investors
             )
             total_allocated = sum(res.investor_payouts.values())
+            has_no_negative = all(amt >= 0 for amt in res.investor_payouts.values())
+            matches = (total_allocated == collected) and has_no_negative and (res.rounding_remainder >= 0)
             results.append({
                 "collected": collected,
                 "total_allocated": total_allocated,
                 "remainder": res.rounding_remainder,
-                "matches": total_allocated == collected
+                "no_negative": has_no_negative,
+                "matches": matches
             })
 
         return {
