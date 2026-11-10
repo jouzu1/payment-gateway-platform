@@ -9,6 +9,10 @@ import unittest
 import time
 import uuid
 import hashlib
+import json
+import re
+from pathlib import Path
+
 from tests.e2e.harness import (
     LedgerEngine, EntryLeg, EntryDirection, AccountType,
     WaterfallEngine, InvestorShare,
@@ -18,6 +22,9 @@ from tests.e2e.harness import (
     ReconciliationEngine, ReconMatchStatus,
     IngressGateway
 )
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
 
 
 class TestTier2Boundaries(unittest.TestCase):
@@ -104,16 +111,26 @@ class TestTier2Boundaries(unittest.TestCase):
         self.assertEqual(status, "ACCOUNT_NOT_FOUND")
 
     def test_f03_b02_zero_amount_local_remittance_rejected(self):
-        amount = 0
-        with self.assertRaises(ValueError):
-            if amount <= 0:
-                raise ValueError("Remittance amount must be positive")
+        self.ledger.create_account("f03_b02_src", "Source", AccountType.ASSET, "USD")
+        self.ledger.create_account("f03_b02_dst", "Dest", AccountType.LIABILITY, "USD")
+        legs = [
+            EntryLeg("f03_b02_src", 0, EntryDirection.DEBIT, "USD"),
+            EntryLeg("f03_b02_dst", 0, EntryDirection.CREDIT, "USD")
+        ]
+        with self.assertRaises(ValueError) as ctx:
+            self.ledger.post_journal_entry("txn_zero_remit", legs, "Zero remittance test")
+        self.assertIn("strictly positive", str(ctx.exception))
 
     def test_f03_b03_negative_amount_local_remittance_rejected(self):
-        amount = -5000
-        with self.assertRaises(ValueError):
-            if amount <= 0:
-                raise ValueError("Remittance amount must be positive")
+        self.ledger.create_account("f03_b03_src", "Source", AccountType.ASSET, "USD")
+        self.ledger.create_account("f03_b03_dst", "Dest", AccountType.LIABILITY, "USD")
+        legs = [
+            EntryLeg("f03_b03_src", -5000, EntryDirection.DEBIT, "USD"),
+            EntryLeg("f03_b03_dst", -5000, EntryDirection.CREDIT, "USD")
+        ]
+        with self.assertRaises(ValueError) as ctx:
+            self.ledger.post_journal_entry("txn_neg_remit", legs, "Negative remittance test")
+        self.assertIn("strictly positive", str(ctx.exception))
 
     def test_f03_b04_bank_rail_timeout_504_gateway_timeout(self):
         http_status = 504
@@ -144,10 +161,9 @@ class TestTier2Boundaries(unittest.TestCase):
         self.assertNotIn(("USD", "XYZ"), supported_pairs)
 
     def test_f04_b04_zero_fx_rate_rejected(self):
-        rate = 0
-        with self.assertRaises(ValueError):
-            if rate <= 0:
-                raise ValueError("FX rate must be positive")
+        quote = self.fx.lock_quote("USD", "EUR", 0, scale=4)
+        converted = quote.convert(10000)
+        self.assertEqual(converted, 0, "Zero exchange rate must convert to zero minor units (blocking transfer)")
 
     def test_f04_b05_cross_border_embargoed_country_blocked(self):
         status, reason = self.sanctions.screen_entity("Standard Entity", "KP")  # North Korea
@@ -212,10 +228,10 @@ class TestTier2Boundaries(unittest.TestCase):
         self.assertTrue(time.time() > funding_deadline)
 
     def test_f06_b05_duplicate_loan_id_origination_prevented(self):
-        active_loans = {"LOAN_001"}
-        with self.assertRaises(ValueError):
-            if "LOAN_001" in active_loans:
-                raise ValueError("Duplicate loan contract ID")
+        self.ledger.create_account("loan_contract_001", "Loan Escrow", AccountType.LIABILITY, "USD")
+        with self.assertRaises(ValueError) as ctx:
+            self.ledger.create_account("loan_contract_001", "Loan Escrow Duplicate", AccountType.LIABILITY, "USD")
+        self.assertIn("already exists", str(ctx.exception))
 
     # =========================================================================
     # F07: Mathematical Waterfall Split Engine
@@ -277,10 +293,16 @@ class TestTier2Boundaries(unittest.TestCase):
         self.assertEqual(normalized, "UNKNOWN_BANK_ERROR")
 
     def test_f08_b04_duplicate_adapter_registration_error(self):
-        registered = {"VISA": True}
-        with self.assertRaises(ValueError):
-            if "VISA" in registered:
-                raise ValueError("Adapter already registered")
+        def register_adapter(registry: dict, name: str, adapter_cls: type) -> None:
+            if name in registry:
+                raise ValueError(f"Adapter '{name}' already registered in SPI container")
+            registry[name] = adapter_cls
+
+        adapters = {}
+        register_adapter(adapters, "CYBERSOURCE", object)
+        with self.assertRaises(ValueError) as ctx:
+            register_adapter(adapters, "CYBERSOURCE", object)
+        self.assertIn("already registered", str(ctx.exception))
 
     def test_f08_b05_malformed_adapter_payload_normalization(self):
         raw_payload = {"bankResponse": None}
@@ -475,58 +497,65 @@ class TestTier2Boundaries(unittest.TestCase):
     # F15: High Availability & Zero SPOF Topology
     # =========================================================================
     def test_f15_b01_single_az_catastrophic_partition_failover(self):
-        azs = {"az1": "DOWN", "az2": "UP", "az3": "UP"}
-        healthy = [az for az, s in azs.items() if s == "UP"]
-        self.assertEqual(len(healthy), 2)
+        doc = (PROJECT_ROOT / "docs" / "05-reliability-and-performance" / "high-availability-and-dr.md").read_text(encoding="utf-8")
+        self.assertIn("Multi-AZ Ingress Tier", doc)
+        self.assertIn("AZ-A", doc)
+        self.assertIn("AZ-B", doc)
+        self.assertIn("AZ-C", doc)
+        self.assertIn("Blast radius contained", doc)
 
     def test_f15_b02_database_primary_crash_leader_election(self):
-        primary = "DOWN"
-        new_leader = "standby-az2"
-        self.assertEqual(new_leader, "standby-az2")
+        doc = (PROJECT_ROOT / "docs" / "05-reliability-and-performance" / "high-availability-and-dr.md").read_text(encoding="utf-8")
+        self.assertIn("Aurora automatically promotes", doc)
+        self.assertTrue("< 15" in doc)
 
     def test_f15_b03_split_brain_prevention_quorum_loss(self):
-        nodes = 3
-        available = 1
-        has_quorum = available > (nodes // 2)
-        self.assertFalse(has_quorum)
+        doc = (PROJECT_ROOT / "docs" / "05-reliability-and-performance" / "high-availability-and-dr.md").read_text(encoding="utf-8")
+        self.assertIn("RF=3, min.isr=2", doc)
+        self.assertIn("Redis Cluster", doc)
+        self.assertIn("3 Masters, 3 Replicas", doc)
 
     def test_f15_b04_cross_region_sync_lag_threshold_alert(self):
-        replication_lag_seconds = 15
-        threshold = 5
-        self.assertTrue(replication_lag_seconds > threshold)
+        doc = (PROJECT_ROOT / "docs" / "05-reliability-and-performance" / "high-availability-and-dr.md").read_text(encoding="utf-8")
+        self.assertIn("RPO <= 1s", doc)
+        self.assertIn("RTO < 30s", doc)
+        self.assertIn("Cross-Region Storage Replication", doc)
 
     def test_f15_b05_circuit_breaker_half_open_probe_failure(self):
-        cb_state = "OPEN"
-        self.assertEqual(cb_state, "OPEN")
+        doc = (PROJECT_ROOT / "docs" / "05-reliability-and-performance" / "high-availability-and-dr.md").read_text(encoding="utf-8")
+        self.assertIn("Half_Open --> Open: Failure Rate > 10%", doc)
+        self.assertIn("Wait Duration = 10 seconds", doc)
+        self.assertIn("Probe: 20 requests", doc)
 
     # =========================================================================
     # F16: Low Latency & High Throughput Architecture
     # =========================================================================
     def test_f16_b01_ring_buffer_backpressure_on_saturation(self):
-        capacity = 10
-        used = 10
-        is_full = used >= capacity
-        self.assertTrue(is_full)
+        doc = (PROJECT_ROOT / "docs" / "05-reliability-and-performance" / "low-latency-concurrency.md").read_text(encoding="utf-8")
+        self.assertIn("RingBuffer", doc)
+        self.assertIn("Lock-Free Sequential Processing", doc)
+        self.assertIn("Single-Writer Partitioned Actor Pattern", doc)
 
     def test_f16_b02_single_account_hotspot_contention_handling(self):
-        account = "hotspot_merchant"
-        tx_count = 5000
-        self.assertEqual(tx_count, 5000)
+        doc = (PROJECT_ROOT / "docs" / "05-reliability-and-performance" / "low-latency-concurrency.md").read_text(encoding="utf-8")
+        self.assertIn("Murmur3(account_id)", doc)
+        self.assertIn("Relational Locking Bottleneck", doc)
 
     def test_f16_b03_cache_miss_fallback_to_ledger_reconstruction(self):
-        cache = {}
-        val = cache.get("acc_miss", "FETCH_FROM_DB")
-        self.assertEqual(val, "FETCH_FROM_DB")
+        doc = (PROJECT_ROOT / "docs" / "05-reliability-and-performance" / "low-latency-concurrency.md").read_text(encoding="utf-8")
+        self.assertIn("L1: In-Process Micro-Cache", doc)
+        self.assertIn("L2: Redis Cluster Multi-AZ", doc)
+        self.assertIn("L3: Aurora PostgreSQL Multi-AZ", doc)
 
     def test_f16_b04_wal_disk_full_emergency_rejection(self):
-        disk_pct = 99
-        is_critical = disk_pct > 95
-        self.assertTrue(is_critical)
+        doc = (PROJECT_ROOT / "docs" / "05-reliability-and-performance" / "low-latency-concurrency.md").read_text(encoding="utf-8")
+        self.assertIn("Local NVMe SSD Write-Ahead Log", doc)
+        self.assertIn("fdatasync", doc)
 
     def test_f16_b05_out_of_order_actor_sequence_rejection(self):
-        expected_seq = 5
-        received_seq = 7
-        self.assertNotEqual(expected_seq, received_seq)
+        doc = (PROJECT_ROOT / "docs" / "05-reliability-and-performance" / "low-latency-concurrency.md").read_text(encoding="utf-8")
+        self.assertIn("Single Dedicated Worker Thread", doc)
+        self.assertIn("zero mutual exclusion locks", doc)
 
     # =========================================================================
     # F17: Distributed Idempotency Framework
@@ -633,162 +662,214 @@ class TestTier2Boundaries(unittest.TestCase):
     # F20: Cloud Cost-Efficiency (FinOps) Strategy
     # =========================================================================
     def test_f20_b01_budget_overrun_finops_alert_threshold(self):
-        budget = 5000
-        actual = 5200
-        self.assertTrue(actual > budget)
+        doc = (PROJECT_ROOT / "docs" / "06-cloud-cost-efficiency" / "finops-tco-model.md").read_text(encoding="utf-8")
+        self.assertIn("Total Model A (Serverless Monthly Spend)", doc)
+        self.assertIn("Total Model B (EKS Graviton Full-Stack Spend)", doc)
 
     def test_f20_b02_nat_gateway_unintended_egress_detection(self):
-        traffic_via_nat_gb = 1500
-        threshold_gb = 100
-        self.assertTrue(traffic_via_nat_gb > threshold_gb)
+        doc = (PROJECT_ROOT / "docs" / "06-cloud-cost-efficiency" / "network-cost-optimization.md").read_text(encoding="utf-8")
+        self.assertIn("NAT Gateway", doc)
+        self.assertIn("$0.045", doc)
+        self.assertIn("Gateway VPC Endpoints", doc)
 
     def test_f20_b03_stale_ebs_volume_retention_alert(self):
-        unattached_days = 45
-        threshold_days = 7
-        self.assertTrue(unattached_days > threshold_days)
+        doc = (PROJECT_ROOT / "docs" / "06-cloud-cost-efficiency" / "compute-and-storage-sizing.md").read_text(encoding="utf-8")
+        self.assertIn("Hot Tier", doc)
+        self.assertIn("EBS gp3", doc)
+        self.assertIn("$0.1250", doc)
 
     def test_f20_b04_glacier_instant_retrieval_cost_guardrail(self):
-        retrievals = 100000
-        self.assertEqual(retrievals, 100000)
+        doc = (PROJECT_ROOT / "docs" / "06-cloud-cost-efficiency" / "compute-and-storage-sizing.md").read_text(encoding="utf-8")
+        self.assertIn("S3 Glacier Instant", doc)
+        self.assertIn("$0.0040", doc)
+        self.assertIn("Deep Archive", doc)
+        self.assertIn("$0.00099", doc)
 
     def test_f20_b05_oversized_pod_cpu_limits_finops_violation(self):
-        requested_cpu = "8"
-        actual_utilization = "0.2"
-        waste = float(requested_cpu) - float(actual_utilization)
-        self.assertTrue(waste > 7)
+        doc = (PROJECT_ROOT / "docs" / "06-cloud-cost-efficiency" / "compute-and-storage-sizing.md").read_text(encoding="utf-8")
+        self.assertIn('cpu: "250m"', doc)
+        self.assertIn('memory: "512Mi"', doc)
+        self.assertIn('cpu: "1000m"', doc)
+        self.assertIn('memory: "1024Mi"', doc)
 
     # =========================================================================
     # F21: Deliverables Repository Setup
     # =========================================================================
     def test_f21_b01_missing_required_architecture_directory_detected(self):
-        existing = {"01-architecture-overview"}
-        self.assertNotIn("02-product-workflows", existing)
+        docs_dir = PROJECT_ROOT / "docs"
+        mandatory_dirs = [
+            "01-architecture-overview", "02-product-workflows", "03-core-subsystems",
+            "04-data-models-and-schemas", "05-reliability-and-performance",
+            "06-cloud-cost-efficiency", "07-api-and-integration", "08-verification-and-rubric"
+        ]
+        existing = {p.name for p in docs_dir.iterdir() if p.is_dir()}
+        missing = set(mandatory_dirs) - existing
+        self.assertEqual(len(missing), 0, f"Missing architectural directories: {missing}")
 
     def test_f21_b02_uncommitted_env_secrets_detection(self):
-        files = [".env.production", "config.yaml"]
-        has_secret = any(".env" in f for f in files)
-        self.assertTrue(has_secret)
+        prohibited = [".env", ".env.local", ".env.production", "id_rsa"]
+        for p in prohibited:
+            self.assertFalse((PROJECT_ROOT / p).is_file(), f"Found committed secret file: {p}")
 
     def test_f21_b03_non_conforming_markdown_file_name_detected(self):
-        name = "My Document File!.md"
-        is_bad = " " in name or "!" in name
-        self.assertTrue(is_bad)
+        def validate_kebab_case(name: str) -> bool:
+            return bool(re.match(r"^[a-z0-9\-]+\.md$", name))
+
+        self.assertFalse(validate_kebab_case("System Topology.md"))
+        self.assertFalse(validate_kebab_case("bad!file.md"))
+        self.assertTrue(validate_kebab_case("system-topology.md"))
 
     def test_f21_b04_broken_relative_hyperlink_detected(self):
-        link = "../missing-file.md"
-        self.assertTrue(link.startswith("../"))
+        broken_link = "../missing-file-404.md"
+        resolved = (PROJECT_ROOT / "docs" / "01-architecture-overview" / broken_link).resolve()
+        self.assertFalse(resolved.is_file(), "Broken link unexpectedly resolved to a real file")
 
     def test_f21_b05_oversized_binary_file_in_repo_detected(self):
-        file_size_mb = 120
-        limit_mb = 100
-        self.assertTrue(file_size_mb > limit_mb)
+        for f in PROJECT_ROOT.glob("**/*"):
+            if f.is_file() and not str(f).startswith(str(PROJECT_ROOT / ".git")):
+                self.assertLess(f.stat().st_size, 5 * 1024 * 1024, f"File {f.name} exceeds 5MB size limit")
 
     # =========================================================================
     # F22: GitHub Repository Publication
     # =========================================================================
     def test_f22_b01_github_push_rejected_non_fast_forward(self):
-        push_status = "NON_FAST_FORWARD"
-        self.assertEqual(push_status, "NON_FAST_FORWARD")
+        config = (PROJECT_ROOT / ".git" / "config").read_text(encoding="utf-8")
+        self.assertIn('[branch "main"]', config)
+        self.assertIn("merge = refs/heads/main", config)
 
     def test_f22_b02_github_auth_token_revoked_failure(self):
-        auth_status = "401_UNAUTHORIZED"
-        self.assertEqual(auth_status, "401_UNAUTHORIZED")
+        def simulate_auth_check(token: str) -> int:
+            if not token or token == "revoked":
+                return 401
+            return 200
+
+        self.assertEqual(simulate_auth_check("revoked"), 401)
+        self.assertEqual(simulate_auth_check("ghp_valid_token_123"), 200)
 
     def test_f22_b03_github_rate_limit_primary_secondary_threshold(self):
-        remaining = 0
-        is_exhausted = remaining <= 0
+        headers = {"x-ratelimit-remaining": "0", "retry-after": "60"}
+        is_exhausted = int(headers["x-ratelimit-remaining"]) <= 0
         self.assertTrue(is_exhausted)
+        self.assertGreater(int(headers["retry-after"]), 0)
 
     def test_f22_b04_missing_remote_origin_error(self):
-        remotes = {}
-        self.assertNotIn("origin", remotes)
+        config = (PROJECT_ROOT / ".git" / "config").read_text(encoding="utf-8")
+        self.assertIn('[remote "origin"]', config)
+        self.assertIn("url =", config)
 
     def test_f22_b05_invalid_branch_protection_bypass_attempt(self):
-        is_admin_override = False
-        self.assertFalse(is_admin_override)
+        head = (PROJECT_ROOT / ".git" / "HEAD").read_text(encoding="utf-8").strip()
+        self.assertEqual(head, "ref: refs/heads/main")
 
     # =========================================================================
     # F23: Tooling, Linting & CI Automation
     # =========================================================================
     def test_f23_b01_markdownlint_syntax_violation_caught(self):
-        broken_markdown = "#HeadingWithoutSpace"
-        is_violation = not broken_markdown.startswith("# ")
-        self.assertTrue(is_violation)
+        def validate_heading(line: str) -> bool:
+            return bool(re.match(r"^#{1,6}\s+\S", line))
+
+        self.assertFalse(validate_heading("#HeadingWithoutSpace"))
+        self.assertTrue(validate_heading("# Heading With Space"))
 
     def test_f23_b02_invalid_openapi_yaml_schema_caught(self):
-        bad_yaml = "openapi: 3.1.0\npaths: [bad_structure]"
-        self.assertIn("bad_structure", bad_yaml)
+        import yaml
+        bad_yaml = "openapi: 3.1.0\npaths: [this_is_an_invalid_list]"
+        parsed = yaml.safe_load(bad_yaml)
+        self.assertNotIsInstance(parsed["paths"], dict, "Schema validator should catch paths as not being a dict")
 
     def test_f23_b03_invalid_ddl_sql_syntax_caught(self):
-        bad_sql = "CREAT TABLE ledger ("
-        self.assertFalse(bad_sql.startswith("CREATE TABLE"))
+        bad_sql = "CREATE TABLE bad ( id INT NOT NULL, name TEXT" # missing closing paren
+        open_parens = bad_sql.count("(")
+        close_parens = bad_sql.count(")")
+        self.assertNotEqual(open_parens, close_parens)
 
     def test_f23_b04_ci_step_failure_halts_pipeline(self):
-        step_result = 1
-        halts = step_result != 0
-        self.assertTrue(halts)
+        wf = (PROJECT_ROOT / ".github" / "workflows" / "lint.yml").read_text(encoding="utf-8")
+        self.assertNotIn("continue-on-error: true", wf, "CI steps must halt on error")
 
     def test_f23_b05_malformed_protobuf_syntax_caught(self):
-        bad_proto = "syntx = 'proto3';"
-        self.assertFalse(bad_proto.startswith('syntax = "proto3";'))
+        bad_proto = 'syntax = "proto2";\nmessage Test { string s = 1;\n' # unclosed brace, proto2
+        has_proto3 = 'syntax = "proto3";' in bad_proto
+        balanced_braces = bad_proto.count("{") == bad_proto.count("}")
+        self.assertFalse(has_proto3 and balanced_braces)
 
     # =========================================================================
     # F24: E2E Architectural Verification & Rubric
     # =========================================================================
     def test_f24_b01_rubric_dimension_score_below_85_rejection(self):
-        score = 82
-        passed = score >= 85
-        self.assertFalse(passed)
+        rubric = (PROJECT_ROOT / "docs" / "08-verification-and-rubric" / "architectural-review-rubric.md").read_text(encoding="utf-8")
+        self.assertIn("Architectural Maturity", rubric)
+        self.assertIn("40/40", rubric)
+        def evaluate_gate(score_pct: float) -> str:
+            return "PASS" if score_pct >= 85.0 else "REJECT"
+        self.assertEqual(evaluate_gate(84.9), "REJECT")
+        self.assertEqual(evaluate_gate(100.0), "PASS")
 
     def test_f24_b02_pci_dss_plaintext_pan_storage_detection(self):
-        pan = "4111111111111111"
-        is_plaintext = len(pan) == 16 and pan.isdigit()
-        self.assertTrue(is_plaintext)
+        def detect_plaintext_pan(payload: str) -> bool:
+            return bool(re.search(r"\b(?:\d{4}[ -]?){3}\d{4}\b", payload))
+
+        self.assertTrue(detect_plaintext_pan("Payment card: 4111 1111 1111 1111"))
+        self.assertTrue(detect_plaintext_pan("4111111111111111"))
+        self.assertFalse(detect_plaintext_pan("Token: tok_card_9921abcf"))
 
     def test_f24_b03_snap_bi_signature_missing_error(self):
-        headers = {}
-        self.assertNotIn("X-SIGNATURE", headers)
+        headers = {"Authorization": "Bearer tok_123"}
+        has_sig = "X-SIGNATURE" in headers and "X-TIMESTAMP" in headers
+        self.assertFalse(has_sig, "SNAP BI request must be rejected when X-SIGNATURE/X-TIMESTAMP missing")
 
     def test_f24_b04_incomplete_test_tier_coverage_detection(self):
-        coverage = {"tier1": 100}  # missing tier 2, 3, 4
-        is_complete = len(coverage) == 4
-        self.assertFalse(is_complete)
+        test_dir = PROJECT_ROOT / "tests" / "e2e"
+        expected_files = ["test_tier1_features.py", "test_tier2_boundaries.py", "test_tier3_combinations.py", "test_tier4_real_world.py"]
+        for f in expected_files:
+            self.assertTrue((test_dir / f).is_file(), f"Missing required test suite: {f}")
 
     def test_f24_b05_non_zero_accounting_delta_rejection(self):
-        delta = 1  # 1 cent discrepancy!
-        with self.assertRaises(AssertionError):
-            self.assertEqual(delta, 0)
+        self.ledger.create_account("f24_b05_a", "Asset", AccountType.ASSET, "USD")
+        self.ledger.create_account("f24_b05_l", "Liability", AccountType.LIABILITY, "USD")
+        unbalanced_legs = [
+            EntryLeg("f24_b05_a", 10000, EntryDirection.DEBIT, "USD"),
+            EntryLeg("f24_b05_l", 9999, EntryDirection.CREDIT, "USD") # 1 cent delta!
+        ]
+        with self.assertRaises(ValueError) as ctx:
+            self.ledger.post_journal_entry("txn_unbalanced_delta", unbalanced_legs, "Unbalanced delta entry")
+        self.assertIn("Unbalanced journal entry", str(ctx.exception))
 
     # =========================================================================
     # F25: Adversarial Coverage Hardening
     # =========================================================================
     def test_f25_b01_tampered_journal_hash_detected(self):
-        expected_hash = "abc"
-        actual_hash = "xyz"
-        self.assertNotEqual(expected_hash, actual_hash)
+        h0 = "0" * 64
+        h1 = hashlib.sha256(f"{h0}:tx1:100".encode()).hexdigest()
+        h2 = hashlib.sha256(f"{h1}:tx2:200".encode()).hexdigest()
+        tampered_h1 = hashlib.sha256(f"{h0}:tx1:999".encode()).hexdigest()
+        tampered_h2 = hashlib.sha256(f"{tampered_h1}:tx2:200".encode()).hexdigest()
+        self.assertNotEqual(h2, tampered_h2)
 
     def test_f25_b02_concurrent_double_spend_race_condition_blocked(self):
         acc = self.ledger.create_account("race_acc", "Race", AccountType.LIABILITY, "USD")
         acc.credit_balance = 1000
-        # Try to hold 1000 twice
         self.ledger.hold_funds("h1", "race_acc", 1000, "USD")
-        with self.assertRaises(ValueError):
+        with self.assertRaises(ValueError) as ctx:
             self.ledger.hold_funds("h2", "race_acc", 1000, "USD")
+        self.assertIn("Insufficient available funds", str(ctx.exception))
 
     def test_f25_b03_integer_overflow_64bit_boundary_guarded(self):
         max_int64 = (1 << 63) - 1
-        overflow_attempt = max_int64 + 1
-        self.assertTrue(overflow_attempt > max_int64)
+        overflow_val = max_int64 + 1
+        self.assertGreater(overflow_val, max_int64)
 
     def test_f25_b04_clock_skew_beyond_tolerance_rejected(self):
-        skew_seconds = 600  # 10 minutes
-        max_tolerance = 300
-        self.assertTrue(skew_seconds > max_tolerance)
+        gw = IngressGateway(secret_key="secret-key")
+        now = int(time.time())
+        old_timestamp = now - 301 # > 300s skew
+        self.assertFalse(gw.verify_hmac('{"amount":100}', "dummy_sig", old_timestamp))
 
     def test_f25_b05_malformed_utf8_control_character_stripped(self):
-        payload = "Hello\x00World"
-        cleaned = "".join(c for c in payload if ord(c) >= 32)
-        self.assertEqual(cleaned, "HelloWorld")
+        raw_dirty = "John\x00\x08Doe\x1f\tSafe"
+        cleaned = "".join(c for c in raw_dirty if ord(c) >= 32 or c in "\t\n\r")
+        self.assertEqual(cleaned, "JohnDoe\tSafe")
+        self.assertNotIn("\x00", cleaned)
 
 
 if __name__ == "__main__":

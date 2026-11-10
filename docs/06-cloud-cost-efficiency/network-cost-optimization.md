@@ -6,7 +6,7 @@ In high-volume distributed payment platforms processing tens of billions of tran
 1. **The AWS NAT Gateway Data Processing Tax**: AWS charges an additional **$\$0.045\text{ per GB}$** for all traffic traversing a Managed NAT Gateway, independent of standard internet egress charges.
 2. **The Inter-AZ Data Transfer Penalty**: Traffic traversing Availability Zone boundaries within the same AWS region incurs **$\$0.01\text{ per GB}$ in each direction ($\$0.02\text{ per GB}$ round-trip)**.
 
-By architecting **VPC Gateway & Interface Endpoints** and enforcing **Kubernetes Topology Aware Routing**, the platform completely eliminates NAT Gateway data processing fees for internal cloud services and reduces cross-AZ data transfer by over **85%**, saving upwards of $\$12,000\text{ per month}$ at $10,000\text{ TPS}$.
+By architecting **Gateway VPC Endpoints & Interface Endpoints** and enforcing **Kubernetes Topology Aware Routing**, the platform completely eliminates NAT Gateway data processing fees for internal cloud services and reduces cross-AZ data transfer by over **85%**, saving upwards of $\$12,000\text{ per month}$ at $10,000\text{ TPS}$.
 
 ---
 

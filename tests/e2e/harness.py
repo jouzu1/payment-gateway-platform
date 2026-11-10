@@ -238,18 +238,32 @@ class WaterfallResult:
     principal_paid: int
     investor_payouts: Dict[str, int]
     rounding_remainder: int
+    unallocated_overpayment: int = 0
+
+    @property
+    def overpayment_amount(self) -> int:
+        """Alias for unallocated_overpayment to support domain escrow semantics."""
+        return self.unallocated_overpayment
+
+    @property
+    def overpayment_credit(self) -> int:
+        """Alias for unallocated_overpayment to support prepayment credit semantics."""
+        return self.unallocated_overpayment
 
     @property
     def total_distributed(self) -> int:
         return (self.platform_fee + self.withholding_tax + self.overdue_penalty +
-                sum(self.investor_payouts.values()))
+                sum(self.investor_payouts.values()) + self.unallocated_overpayment)
 
 
 class WaterfallEngine:
     """
     Executes financial waterfall split algorithms for P2P lending:
-    Strict precedence: Penalty -> Tax -> Fee -> Interest -> Principal
-    Ensures zero penny leaks using Banker's Rounding and remainder cent allocation.
+    Strict precedence: Penalty -> Interest -> Tax -> Servicing Fee -> Principal -> Overpayment Escrow
+    Guarantees:
+    1. Zero penny leaks: total_distributed == collected_amount (conservation of minor units)
+    2. Non-negative investor allocations: investor_payouts >= 0 (even under full penalty delinquency)
+    3. Remainder cent preservation: sum(investor_payouts) == net_distributable
     """
     @staticmethod
     def calculate_split(
@@ -272,29 +286,36 @@ class WaterfallEngine:
 
         remaining = collected_amount
 
-        # 1. Deduct overdue penalty first
+        # Tier 1: Overdue Penalty deduction
         penalty_paid = min(remaining, penalty_due)
         remaining -= penalty_paid
 
-        # 2. Accrued interest
+        # Tier 2: Accrued Interest deduction
         interest_paid = min(remaining, interest_due)
         remaining -= interest_paid
 
-        # 3. Withholding tax on interest (15%)
+        # Tier 3: Withholding Tax on allocated interest (15%)
         tax_amount = round((interest_paid * tax_rate_bps) / 10000)
         remaining_interest_for_investors = interest_paid - tax_amount
 
-        # 4. Platform servicing fee from remaining
-        platform_fee = round((collected_amount * platform_fee_bps) / 10000)
-
-        # 5. Principal paid
+        # Tier 5: Principal Repayment deduction
         principal_paid = min(remaining, principal_due)
         remaining -= principal_paid
 
-        # Total net distributable to investors = (interest - tax) + principal - platform_fee
-        net_distributable = remaining_interest_for_investors + principal_paid - platform_fee
+        # Tier 6: Overpayment / Prepayment Credit (any remaining funds allocated to escrow)
+        unallocated_overpayment = remaining
+        remaining = 0
 
-        # Allocate fractionally to investors
+        # Tier 4: Platform Servicing Fee
+        # Calculated on serviceable funds (interest + principal serviced).
+        # Bounded by gross distributable funds so net_distributable is strictly >= 0.
+        distributable_gross = remaining_interest_for_investors + principal_paid
+        nominal_fee = round(((interest_paid + principal_paid) * platform_fee_bps) / 10000)
+        platform_fee = min(nominal_fee, distributable_gross)
+
+        net_distributable = distributable_gross - platform_fee
+
+        # Fractional investor distribution (Pro-Rata)
         payouts: Dict[str, int] = {}
         allocated_so_far = 0
 
@@ -316,7 +337,8 @@ class WaterfallEngine:
             interest_paid=interest_paid,
             principal_paid=principal_paid,
             investor_payouts=payouts,
-            rounding_remainder=remainder
+            rounding_remainder=remainder,
+            unallocated_overpayment=unallocated_overpayment
         )
 
 

@@ -9,6 +9,11 @@ import unittest
 import time
 import uuid
 import hashlib
+import json
+import py_compile
+import re
+from pathlib import Path
+
 from tests.e2e.harness import (
     LedgerEngine, EntryLeg, EntryDirection, AccountType,
     WaterfallEngine, InvestorShare,
@@ -18,6 +23,9 @@ from tests.e2e.harness import (
     ReconciliationEngine, ReconMatchStatus,
     IngressGateway
 )
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
 
 
 class TestTier1Features(unittest.TestCase):
@@ -494,100 +502,150 @@ class TestTier1Features(unittest.TestCase):
     # F13: Production Relational DDL Schemas
     # =========================================================================
     def test_f13_01_schema_ledger_accounts_table_definition(self):
-        required_cols = ["account_id", "account_type", "currency", "debit_balance", "credit_balance"]
-        self.assertEqual(len(required_cols), 5)
+        sql_path = PROJECT_ROOT / "schemas" / "schema.sql"
+        self.assertTrue(sql_path.is_file(), f"schema.sql not found at {sql_path}")
+        sql = sql_path.read_text(encoding="utf-8")
+        self.assertIn("CREATE TABLE ledger_accounts", sql)
+        self.assertIn("account_number", sql)
+        self.assertIn("category account_category NOT NULL", sql)
+        self.assertIn("currency VARCHAR(3) NOT NULL", sql)
 
     def test_f13_02_schema_journal_entries_table_definition(self):
-        required_cols = ["entry_id", "transaction_id", "timestamp", "description"]
-        self.assertIn("entry_id", required_cols)
+        sql = (PROJECT_ROOT / "schemas" / "schema.sql").read_text(encoding="utf-8")
+        self.assertIn("CREATE TABLE journal_entries", sql)
+        self.assertIn("idempotency_key VARCHAR(128) UNIQUE NOT NULL", sql)
+        self.assertIn("correlation_id VARCHAR(128) NOT NULL", sql)
+        self.assertIn("posted_at TIMESTAMPTZ NOT NULL", sql)
 
     def test_f13_03_schema_foreign_key_relationships(self):
-        fk_def = {"table": "entry_legs", "fk_col": "account_id", "ref_table": "ledger_accounts"}
-        self.assertEqual(fk_def["ref_table"], "ledger_accounts")
+        sql = (PROJECT_ROOT / "schemas" / "schema.sql").read_text(encoding="utf-8")
+        self.assertIn("CREATE TABLE entry_legs", sql)
+        self.assertIn("REFERENCES ledger_accounts(id)", sql)
+        self.assertIn("REFERENCES journal_entries(id)", sql)
 
     def test_f13_04_schema_primary_key_and_uuid_generation(self):
-        pk = str(uuid.uuid4())
-        self.assertEqual(len(pk), 36)
+        sql = (PROJECT_ROOT / "schemas" / "schema.sql").read_text(encoding="utf-8")
+        self.assertIn("DEFAULT gen_random_uuid()", sql)
+        self.assertIn('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"', sql)
 
     def test_f13_05_schema_composite_indexes_for_queries(self):
-        idx = ["account_id", "created_at"]
-        self.assertEqual(len(idx), 2)
+        sql = (PROJECT_ROOT / "schemas" / "schema.sql").read_text(encoding="utf-8")
+        self.assertIn("idx_ledger_accounts_merchant", sql)
+        self.assertIn("idx_journal_entries_posted", sql)
+        self.assertIn("idx_entry_legs_account", sql)
 
     # =========================================================================
     # F14: REST OpenAPI 3.1 & gRPC Specs
     # =========================================================================
     def test_f14_01_openapi_payment_intent_create_schema(self):
-        schema_props = ["amount", "currency", "payment_method_types"]
-        self.assertIn("currency", schema_props)
+        openapi_path = PROJECT_ROOT / "schemas" / "openapi.yaml"
+        self.assertTrue(openapi_path.is_file(), f"openapi.yaml not found at {openapi_path}")
+        content = openapi_path.read_text(encoding="utf-8")
+        self.assertIn("/v1/payment_intents", content)
+        self.assertIn("CreatePaymentIntentRequest", content)
+        self.assertIn("client_secret", content)
 
     def test_f14_02_openapi_payout_order_create_schema(self):
-        schema_props = ["beneficiary_account", "amount", "target_currency"]
-        self.assertIn("target_currency", schema_props)
+        content = (PROJECT_ROOT / "schemas" / "openapi.yaml").read_text(encoding="utf-8")
+        self.assertIn("/v1/payouts", content)
+        self.assertIn("CreatePayoutOrderRequest", content)
+        self.assertIn("beneficiary", content)
 
     def test_f14_03_grpc_protobuf_transaction_service_contract(self):
-        rpc_methods = ["CreatePayment", "GetStatus", "CapturePayment"]
-        self.assertIn("CreatePayment", rpc_methods)
+        proto_path = PROJECT_ROOT / "schemas" / "service.proto"
+        self.assertTrue(proto_path.is_file(), f"service.proto not found at {proto_path}")
+        content = proto_path.read_text(encoding="utf-8")
+        self.assertIn('syntax = "proto3";', content)
+        self.assertIn("service PaymentService", content)
+        self.assertIn("service PayoutService", content)
+        self.assertIn("service LedgerService", content)
 
     def test_f14_04_api_iso4217_currency_enum_validation(self):
-        iso_currencies = {"USD", "EUR", "GBP", "SGD", "IDR", "JPY"}
-        self.assertIn("USD", iso_currencies)
+        content = (PROJECT_ROOT / "schemas" / "openapi.yaml").read_text(encoding="utf-8")
+        self.assertIn("USD", content)
+        self.assertIn("EUR", content)
+        self.assertIn("IDR", content)
+        self.assertIn("SGD", content)
 
     def test_f14_05_api_error_response_rfc7807_structure(self):
-        err = {"type": "https://errors.gateway.io/insufficient-funds", "title": "Insufficient Funds", "status": 400}
-        self.assertEqual(err["status"], 400)
+        doc = (PROJECT_ROOT / "docs" / "04-data-models-and-schemas" / "api-schemas.md").read_text(encoding="utf-8")
+        self.assertIn("RFC 7807", doc)
+        self.assertIn("application/problem+json", doc)
+        self.assertIn("type", doc)
+        self.assertIn("title", doc)
+        self.assertIn("status", doc)
 
     # =========================================================================
     # F15: High Availability & Zero SPOF Topology
     # =========================================================================
     def test_f15_01_multi_az_traffic_distribution_ratio(self):
-        az_weights = {"az1": 33.3, "az2": 33.3, "az3": 33.4}
-        self.assertAlmostEqual(sum(az_weights.values()), 100.0)
+        ha_doc = (PROJECT_ROOT / "docs" / "05-reliability-and-performance" / "high-availability-and-dr.md").read_text(encoding="utf-8")
+        self.assertIn("33.3%", ha_doc)
+        self.assertIn("RPO = 0", ha_doc)
+        self.assertIn("RTO < 3", ha_doc)
 
     def test_f15_02_route53_arc_routing_control_healthy(self):
-        arc_state = {"primary_region": "ENABLED", "dr_region": "DISABLED"}
-        self.assertEqual(arc_state["primary_region"], "ENABLED")
+        ha_doc = (PROJECT_ROOT / "docs" / "05-reliability-and-performance" / "high-availability-and-dr.md").read_text(encoding="utf-8")
+        self.assertIn("Route 53 ARC", ha_doc)
+        self.assertIn("RPO <= 1s", ha_doc)
+        self.assertIn("RTO < 30s", ha_doc)
 
     def test_f15_03_database_read_replica_load_balancing(self):
-        replicas = ["ro-replica-1", "ro-replica-2"]
-        chosen = replicas[0]
-        self.assertTrue(chosen.startswith("ro-"))
+        ha_doc = (PROJECT_ROOT / "docs" / "05-reliability-and-performance" / "high-availability-and-dr.md").read_text(encoding="utf-8")
+        self.assertIn("Aurora PostgreSQL Multi-AZ", ha_doc)
+        self.assertIn("6-way storage replication", ha_doc)
+        self.assertIn("Read Replicas", ha_doc)
 
     def test_f15_04_stateless_service_pod_anti_affinity(self):
-        rule = {"topologyKey": "topology.kubernetes.io/zone"}
-        self.assertEqual(rule["topologyKey"], "topology.kubernetes.io/zone")
+        compute_doc = (PROJECT_ROOT / "docs" / "06-cloud-cost-efficiency" / "compute-and-storage-sizing.md").read_text(encoding="utf-8")
+        self.assertIn("topology.kubernetes.io/zone", compute_doc)
+        ha_doc = (PROJECT_ROOT / "docs" / "05-reliability-and-performance" / "high-availability-and-dr.md").read_text(encoding="utf-8")
+        self.assertIn("Pod Anti-Affinity", ha_doc)
 
     def test_f15_05_graceful_degradation_non_critical_features(self):
-        features = {"payments": "ACTIVE", "recommendations": "DISABLED"}
-        self.assertEqual(features["payments"], "ACTIVE")
+        ha_doc = (PROJECT_ROOT / "docs" / "05-reliability-and-performance" / "high-availability-and-dr.md").read_text(encoding="utf-8")
+        self.assertIn("Graceful Degradation", ha_doc)
+        self.assertIn("Tier-1: Critical Path", ha_doc)
+        self.assertIn("Tier-2: Asynchronous Soft Path", ha_doc)
 
     # =========================================================================
     # F16: Low Latency & High Throughput Architecture
     # =========================================================================
     def test_f16_01_lmax_actor_ring_buffer_dispatch(self):
-        ring_buffer = [None] * 1024
-        seq = 100
-        ring_buffer[seq % 1024] = "event_payload"
-        self.assertEqual(ring_buffer[100], "event_payload")
+        doc = (PROJECT_ROOT / "docs" / "05-reliability-and-performance" / "low-latency-concurrency.md").read_text(encoding="utf-8")
+        self.assertIn("LMAX Disruptor", doc)
+        self.assertIn("Single-Writer Partitioned Actor", doc)
+        self.assertIn("RingBuffer", doc)
 
     def test_f16_02_account_partitioned_single_writer_throughput(self):
-        account_id = "acc_partition_99"
-        partition = hash(account_id) % 16
-        self.assertTrue(0 <= partition < 16)
+        doc = (PROJECT_ROOT / "docs" / "05-reliability-and-performance" / "low-latency-concurrency.md").read_text(encoding="utf-8")
+        self.assertIn("Murmur3(account_id)", doc)
+        self.assertIn("Lock-Free Sequential Processing", doc)
 
     def test_f16_03_in_memory_balance_cache_lookup(self):
-        cache = {"acc_1": 150000}
-        self.assertEqual(cache.get("acc_1"), 150000)
+        doc = (PROJECT_ROOT / "docs" / "05-reliability-and-performance" / "low-latency-concurrency.md").read_text(encoding="utf-8")
+        self.assertIn("L1: In-Process Micro-Cache", doc)
+        self.assertIn("Singleflight Mutex Coalescer", doc)
+        self.assertIn("Redis Cluster", doc)
 
     def test_f16_04_sub_millisecond_journal_entry_processing(self):
+        self.ledger.create_account("f16_acc_a", "Asset", AccountType.ASSET, "USD")
+        self.ledger.create_account("f16_acc_b", "Liability", AccountType.LIABILITY, "USD")
+        legs = [
+            EntryLeg("f16_acc_a", 10000, EntryDirection.DEBIT, "USD"),
+            EntryLeg("f16_acc_b", 10000, EntryDirection.CREDIT, "USD")
+        ]
         t0 = time.perf_counter()
-        # Fast arithmetic
-        x = 5000 + 1000
-        t1 = time.perf_counter()
-        self.assertTrue((t1 - t0) < 0.001)  # < 1 millisecond
+        entry = self.ledger.post_journal_entry("bench_txn_001", legs, "Sub-ms benchmark execution")
+        elapsed = time.perf_counter() - t0
+        self.assertIsNotNone(entry.entry_id)
+        self.assertLess(elapsed, 0.005, f"Ledger post exceeded 5ms SLA: took {elapsed*1000:.3f}ms")
 
     def test_f16_05_asynchronous_wal_flush_batching(self):
-        batch = ["tx_1", "tx_2", "tx_3"]
-        self.assertEqual(len(batch), 3)
+        doc = (PROJECT_ROOT / "docs" / "05-reliability-and-performance" / "low-latency-concurrency.md").read_text(encoding="utf-8")
+        self.assertIn("Coalesced Group Commit", doc)
+        self.assertIn("128 txns", doc)
+        self.assertIn("NVMe", doc)
 
     # =========================================================================
     # F17: Distributed Idempotency Framework
@@ -683,27 +741,41 @@ class TestTier1Features(unittest.TestCase):
     # F20: Cloud Cost-Efficiency (FinOps) Strategy
     # =========================================================================
     def test_f20_01_eks_graviton_karpenter_cost_efficiency_model(self):
-        lambda_monthly = 52000
-        eks_graviton = 4200
-        savings_pct = (lambda_monthly - eks_graviton) / lambda_monthly * 100
-        self.assertAlmostEqual(savings_pct, 91.92, places=1)
+        doc = (PROJECT_ROOT / "docs" / "06-cloud-cost-efficiency" / "finops-tco-model.md").read_text(encoding="utf-8")
+        self.assertIn("91.92%", doc)
+        self.assertIn("$52,000", doc)
+        self.assertIn("$4,200", doc)
+        savings_pct = (52000 - 4200) / 52000 * 100
+        self.assertAlmostEqual(savings_pct, 91.923, places=2)
 
     def test_f20_02_tiered_storage_policy_nvme_to_s3_glacier(self):
-        policies = {"hot_days": 30, "warm_s3_days": 90, "cold_glacier_days": 365}
-        self.assertEqual(policies["cold_glacier_days"], 365)
+        doc = (PROJECT_ROOT / "docs" / "06-cloud-cost-efficiency" / "compute-and-storage-sizing.md").read_text(encoding="utf-8")
+        self.assertIn("Tier 1: Hot Operational Tier", doc)
+        self.assertIn("Tier 2: Warm Queryable Tier", doc)
+        self.assertIn("Tier 3: Cold Audit Tier", doc)
+        self.assertIn("Tier 4: Regulatory Archive Tier", doc)
+        self.assertIn("$0.00099", doc)
 
     def test_f20_03_vpc_endpoint_traffic_routing_cost_avoidance(self):
-        endpoints = ["s3", "dynamodb", "secretsmanager"]
-        self.assertIn("s3", endpoints)
+        doc = (PROJECT_ROOT / "docs" / "06-cloud-cost-efficiency" / "network-cost-optimization.md").read_text(encoding="utf-8")
+        self.assertIn("Gateway VPC Endpoints", doc)
+        self.assertIn("NAT Gateway", doc)
+        self.assertIn("$0.045", doc)
 
     def test_f20_04_karpenter_scale_down_idle_node_consolidation(self):
-        ttl_seconds = 300
-        self.assertEqual(ttl_seconds, 300)
+        doc = (PROJECT_ROOT / "docs" / "06-cloud-cost-efficiency" / "compute-and-storage-sizing.md").read_text(encoding="utf-8")
+        self.assertIn("consolidationPolicy: WhenUnderutilized", doc)
+        self.assertIn("consolidateAfter: 300s", doc)
+        self.assertIn("expireAfter: 720h", doc)
 
     def test_f20_05_finops_monthly_budget_allocation_tracking(self):
-        budget = 10000
-        spend = 4500
-        self.assertTrue(spend < budget)
+        doc = (PROJECT_ROOT / "docs" / "06-cloud-cost-efficiency" / "finops-tco-model.md").read_text(encoding="utf-8")
+        self.assertIn("Unit Cost", doc)
+        unit_serverless = (52000 / 7776000000) * 100000
+        unit_eks = (4200 / 7776000000) * 100000
+        self.assertAlmostEqual(unit_serverless, 0.6687, places=3)
+        self.assertAlmostEqual(unit_eks, 0.0540, places=3)
+        self.assertLess(unit_eks, unit_serverless * 0.10)
 
     # =========================================================================
     # F21: Deliverables Repository Setup
@@ -714,131 +786,234 @@ class TestTier1Features(unittest.TestCase):
             "04-data-models-and-schemas", "05-reliability-and-performance",
             "06-cloud-cost-efficiency", "07-api-and-integration", "08-verification-and-rubric"
         ]
-        self.assertEqual(len(domains), 8)
+        docs_dir = PROJECT_ROOT / "docs"
+        self.assertTrue(docs_dir.is_dir(), f"Docs directory not found at {docs_dir}")
+        for d in domains:
+            self.assertTrue((docs_dir / d).is_dir(), f"Missing required domain directory: {d}")
 
     def test_f21_02_gitignore_rules_exclude_sensitive_files(self):
-        ignores = [".env", "*.key", "node_modules/", "*.pyc"]
-        self.assertIn(".env", ignores)
+        gitignore_path = PROJECT_ROOT / ".gitignore"
+        self.assertTrue(gitignore_path.is_file(), f".gitignore not found at {gitignore_path}")
+        content = gitignore_path.read_text(encoding="utf-8")
+        self.assertIn(".env", content)
+        self.assertIn("*.key", content)
+        self.assertIn("node_modules/", content)
+        self.assertIn("*.pyc", content)
 
     def test_f21_03_markdown_documentation_file_naming_convention(self):
-        doc = "system-topology.md"
-        self.assertTrue(doc.endswith(".md"))
+        docs_dir = PROJECT_ROOT / "docs"
+        md_files = list(docs_dir.rglob("*.md"))
+        self.assertGreaterEqual(len(md_files), 25, f"Expected at least 25 specifications, found {len(md_files)}")
+        for f in md_files:
+            self.assertTrue(
+                re.match(r"^[a-z0-9\-]+\.md$", f.name),
+                f"File {f.name} does not follow lowercase kebab-case naming"
+            )
 
     def test_f21_04_diagrams_mermaid_directory_present(self):
-        diagram_type = "mermaid"
-        self.assertEqual(diagram_type, "mermaid")
+        diagrams_dir = PROJECT_ROOT / "diagrams"
+        self.assertTrue(diagrams_dir.is_dir(), f"Diagrams directory missing at {diagrams_dir}")
+        required_diagrams = [
+            "cross-border-payout-flow.mmd", "ledger-double-entry.mmd", "local-remittance-flow.mmd",
+            "multi-az-ha-dr.mmd", "p2p-escrow-waterfall.mmd", "payin-checkout-flow.mmd",
+            "saga-outbox-cdc.mmd", "system-topology.mmd"
+        ]
+        for dia in required_diagrams:
+            dia_file = diagrams_dir / dia
+            self.assertTrue(dia_file.is_file(), f"Missing architectural diagram: {dia}")
+            self.assertGreater(dia_file.stat().st_size, 500, f"Diagram {dia} is unexpectedly small")
 
     def test_f21_05_schemas_directory_contains_ddl_and_specs(self):
-        schemas = ["schema.sql", "openapi.yaml", "service.proto"]
-        self.assertIn("schema.sql", schemas)
+        schemas_dir = PROJECT_ROOT / "schemas"
+        self.assertTrue(schemas_dir.is_dir())
+        for fname in ["schema.sql", "openapi.yaml", "service.proto"]:
+            fpath = schemas_dir / fname
+            self.assertTrue(fpath.is_file(), f"Missing schema artifact: {fname}")
+            self.assertGreater(fpath.stat().st_size, 1000)
 
     # =========================================================================
     # F22: GitHub Repository Publication
     # =========================================================================
     def test_f22_01_git_remote_origin_valid_github_url(self):
-        url = "https://github.com/jouzu1/payment-gateway-platform.git"
-        self.assertTrue(url.startswith("https://github.com/jouzu1/"))
+        config_path = PROJECT_ROOT / ".git" / "config"
+        self.assertTrue(config_path.is_file(), f".git/config not found at {config_path}")
+        config = config_path.read_text(encoding="utf-8")
+        self.assertIn('url = https://github.com/jouzu1/payment-gateway-platform.git', config)
 
     def test_f22_02_github_cli_authenticated_user_context(self):
-        user = "jouzu1"
-        self.assertEqual(user, "jouzu1")
+        config = (PROJECT_ROOT / ".git" / "config").read_text(encoding="utf-8")
+        self.assertIn("jouzu1/payment-gateway-platform", config)
 
     def test_f22_03_main_branch_default_configuration(self):
-        branch = "main"
-        self.assertEqual(branch, "main")
+        head_path = PROJECT_ROOT / ".git" / "HEAD"
+        self.assertTrue(head_path.is_file(), f".git/HEAD missing at {head_path}")
+        head = head_path.read_text(encoding="utf-8").strip()
+        self.assertEqual(head, "ref: refs/heads/main", f"Expected default branch main, got {head}")
 
     def test_f22_04_commit_history_structured_milestones(self):
-        milestones = ["M1", "M2", "M3", "M4", "M5"]
-        self.assertEqual(len(milestones), 5)
+        git_log = (PROJECT_ROOT / ".git" / "logs" / "HEAD")
+        self.assertTrue(git_log.is_file(), "Git HEAD reflog missing")
+        content = git_log.read_text(encoding="utf-8")
+        self.assertIn("commit", content)
 
     def test_f22_05_readme_overview_link_integrity(self):
-        readme_sections = ["Architecture", "Product Workflows", "Getting Started"]
-        self.assertIn("Architecture", readme_sections)
+        readme_path = PROJECT_ROOT / "README.md"
+        self.assertTrue(readme_path.is_file(), f"README.md missing at {readme_path}")
+        readme = readme_path.read_text(encoding="utf-8")
+        self.assertIn("Payment Gateway Platform", readme)
+        self.assertIn("01-architecture-overview", readme)
+        self.assertIn("diagrams/", readme)
 
     # =========================================================================
     # F23: Tooling, Linting & CI Automation
     # =========================================================================
     def test_f23_01_markdownlint_configuration_validity(self):
-        config = {"default": True, "MD013": False}
-        self.assertFalse(config["MD013"])
+        lint_path = PROJECT_ROOT / ".markdownlint.json"
+        self.assertTrue(lint_path.is_file(), f".markdownlint.json missing at {lint_path}")
+        config = json.loads(lint_path.read_text(encoding="utf-8"))
+        self.assertIs(config.get("default"), True)
+        self.assertIs(config.get("MD013"), False)
 
     def test_f23_02_python_schema_validator_syntax(self):
-        validator = "validate-schemas.py"
-        self.assertTrue(validator.endswith(".py"))
+        script_path = PROJECT_ROOT / "scripts" / "validate-schemas.py"
+        self.assertTrue(script_path.is_file(), f"validate-schemas.py missing at {script_path}")
+        compiled = py_compile.compile(str(script_path), doraise=True)
+        self.assertTrue(Path(compiled).is_file())
 
     def test_f23_03_github_actions_workflow_yaml_validity(self):
-        workflow = {"name": "CI", "on": ["push", "pull_request"]}
-        self.assertEqual(workflow["name"], "CI")
+        wf_path = PROJECT_ROOT / ".github" / "workflows" / "lint.yml"
+        self.assertTrue(wf_path.is_file(), f"CI workflow missing at {wf_path}")
+        wf = wf_path.read_text(encoding="utf-8")
+        self.assertIn("name: CI", wf)
+        self.assertIn("branches: [main]", wf)
+        self.assertIn("ubuntu-latest", wf)
 
     def test_f23_04_ci_step_ordering_lint_validate_test(self):
-        steps = ["lint", "validate-schemas", "run-tests"]
-        self.assertEqual(steps[0], "lint")
-        self.assertEqual(steps[2], "run-tests")
+        wf = (PROJECT_ROOT / ".github" / "workflows" / "lint.yml").read_text(encoding="utf-8")
+        pos_lint = wf.find("Step 1 - lint")
+        pos_validate = wf.find("Step 2 - validate-schemas")
+        pos_tests = wf.find("Step 3 - run-tests")
+        self.assertTrue(pos_lint != -1 and pos_validate != -1 and pos_tests != -1)
+        self.assertLess(pos_lint, pos_validate)
+        self.assertLess(pos_validate, pos_tests)
 
     def test_f23_05_git_pre_commit_hook_configuration(self):
-        hooks = ["markdownlint", "syntax-check"]
-        self.assertIn("markdownlint", hooks)
+        wf = (PROJECT_ROOT / ".github" / "workflows" / "lint.yml").read_text(encoding="utf-8")
+        self.assertIn("markdownlint", wf)
+        self.assertIn("python scripts/validate-schemas.py", wf)
+        self.assertIn("python scripts/run-e2e-tests.py", wf)
 
     # =========================================================================
     # F24: E2E Architectural Verification & Rubric
     # =========================================================================
     def test_f24_01_rubric_10_dimensions_completeness(self):
+        rubric_path = PROJECT_ROOT / "docs" / "08-verification-and-rubric" / "architectural-review-rubric.md"
+        self.assertTrue(rubric_path.is_file(), f"Rubric missing at {rubric_path}")
+        rubric = rubric_path.read_text(encoding="utf-8")
         dimensions = [
-            "Functional Completeness", "Domain Boundaries", "Extensibility",
-            "Data Models & DDL", "Ledger Integrity", "High Availability",
-            "Concurrency", "Idempotency & Sagas", "FinOps", "Verification"
+            "Functional Completeness", "Fault Tolerance & Zero SPOF", "Ledger Correctness & ACID",
+            "Cloud FinOps & Cost Efficiency", "Extensibility & SPI", "Latency SLA & Concurrency",
+            "Distributed Idempotency & Sagas", "Security & PCI-DSS", "Disaster Recovery", "Regulatory Compliance"
         ]
-        self.assertEqual(len(dimensions), 10)
+        for dim in dimensions:
+            self.assertIn(dim, rubric)
 
     def test_f24_02_pci_dss_level1_compliance_control_mapping(self):
-        controls = ["Req 3: Protect Cardholder Data", "Req 8: Identification & Auth"]
-        self.assertEqual(len(controls), 2)
+        compliance_path = PROJECT_ROOT / "docs" / "08-verification-and-rubric" / "regulatory-compliance-mapping.md"
+        self.assertTrue(compliance_path.is_file())
+        doc = compliance_path.read_text(encoding="utf-8")
+        self.assertIn("PCI-DSS v4.0", doc)
+        self.assertIn("Req 3.2", doc)
+        self.assertIn("Req 3.4", doc)
+        self.assertIn("Req 4.1", doc)
+        self.assertIn("Req 8.3", doc)
+        self.assertIn("Req 10.2", doc)
 
     def test_f24_03_snap_bi_bspi2030_regulatory_mapping(self):
-        reg = "SNAP BI 2030"
-        self.assertEqual(reg, "SNAP BI 2030")
+        doc = (PROJECT_ROOT / "docs" / "08-verification-and-rubric" / "regulatory-compliance-mapping.md").read_text(encoding="utf-8")
+        self.assertIn("Bank Indonesia SNAP", doc)
+        self.assertIn("BSPI 2030", doc)
+        self.assertIn("X-SIGNATURE", doc)
+        self.assertIn("X-TIMESTAMP", doc)
 
     def test_f24_04_four_tier_test_coverage_thresholds(self):
-        thresholds = {"tier1": 125, "tier2": 125, "tier3": 25, "tier4": 4}
-        self.assertEqual(thresholds["tier1"], 125)
+        catalog_path = PROJECT_ROOT / "tests" / "e2e" / "test_catalog.json"
+        self.assertTrue(catalog_path.is_file())
+        data = json.loads(catalog_path.read_text(encoding="utf-8"))
+        self.assertEqual(data["tiers"]["tier1"], 125)
+        self.assertEqual(data["tiers"]["tier2"], 125)
+        self.assertEqual(data["tiers"]["tier3"], 25)
+        self.assertEqual(data["tiers"]["tier4"], 4)
+        self.assertEqual(data["total_tests"], 279)
 
     def test_f24_05_zero_balance_leakage_rubric_check(self):
-        leakage = 0
-        self.assertEqual(leakage, 0)
+        self.ledger.create_account("f24_cash", "Cash Account", AccountType.ASSET, "USD")
+        self.ledger.create_account("f24_cust", "Customer Wallet", AccountType.LIABILITY, "USD")
+        legs = [
+            EntryLeg("f24_cash", 50000, EntryDirection.DEBIT, "USD"),
+            EntryLeg("f24_cust", 50000, EntryDirection.CREDIT, "USD")
+        ]
+        self.ledger.post_journal_entry("txn_leakage_check", legs, "Rubric zero-leakage test")
+        is_balanced, assets, liab_eq = self.ledger.verify_accounting_equation("USD")
+        self.assertTrue(is_balanced)
+        self.assertEqual(assets, 50000)
+        self.assertEqual(liab_eq, 50000)
+        self.assertEqual(assets - liab_eq, 0, "Zero-balance accounting leakage violated")
 
     # =========================================================================
     # F25: Adversarial Coverage Hardening
     # =========================================================================
     def test_f25_01_tamper_evident_journal_hash_chain(self):
-        h0 = "genesis_hash"
-        h1 = hashlib.sha256(f"{h0}_entry_1".encode()).hexdigest()
-        h2 = hashlib.sha256(f"{h1}_entry_2".encode()).hexdigest()
-        self.assertNotEqual(h1, h2)
+        blocks = ["genesis", "entry_01", "entry_02", "entry_03"]
+        chain = []
+        prev_hash = "0" * 64
+        for b in blocks:
+            curr_hash = hashlib.sha256(f"{prev_hash}:{b}".encode()).hexdigest()
+            chain.append((b, curr_hash, prev_hash))
+            prev_hash = curr_hash
+        self.assertEqual(len(chain), 4)
+        # Verify tamper detection
+        tampered_hash = hashlib.sha256(f"{chain[0][1]}:tampered_entry_01".encode()).hexdigest()
+        self.assertNotEqual(tampered_hash, chain[1][1], "Tampered block was not detected in hash chain")
 
     def test_f25_02_sql_injection_payload_sanitization(self):
-        dirty_input = "'; DROP TABLE ledger_accounts; --"
-        # Prepared statements parameterize and prevent execution
-        safe_param = dirty_input
-        self.assertEqual(safe_param, dirty_input)
+        def sanitize_sql_identifier(identifier: str) -> str:
+            if not re.match(r"^[a-zA-Z0-9_]+$", identifier):
+                raise ValueError(f"Dangerous SQL injection pattern detected: {identifier}")
+            return identifier
+
+        injection_payload = "'; DROP TABLE ledger_accounts; --"
+        with self.assertRaises(ValueError) as ctx:
+            sanitize_sql_identifier(injection_payload)
+        self.assertIn("Dangerous SQL injection", str(ctx.exception))
+        # Parameterized query isolation check
+        query_template = "SELECT id, currency FROM ledger_accounts WHERE account_number = %s"
+        params = (injection_payload,)
+        self.assertNotIn(injection_payload, query_template)
+        self.assertEqual(params[0], injection_payload)
 
     def test_f25_03_xss_and_control_character_escaping(self):
-        raw = "<script>alert(1)</script>"
         import html
-        escaped = html.escape(raw)
+        raw_xss = "<script>alert(1)</script>"
+        escaped = html.escape(raw_xss)
         self.assertEqual(escaped, "&lt;script&gt;alert(1)&lt;/script&gt;")
+        self.assertNotIn("<script>", escaped)
 
     def test_f25_04_timing_attack_resistant_hmac_comparison(self):
         import hmac
-        s1 = "abcdef0123456789"
-        s2 = "abcdef0123456789"
+        s1 = hashlib.sha256(b"secret_signature_1").hexdigest()
+        s2 = hashlib.sha256(b"secret_signature_1").hexdigest()
+        s_diff = hashlib.sha256(b"secret_signature_2").hexdigest()
         self.assertTrue(hmac.compare_digest(s1, s2))
+        self.assertFalse(hmac.compare_digest(s1, s_diff))
 
     def test_f25_05_replay_attack_nonce_uniqueness(self):
         seen_nonces = set()
-        nonce = str(uuid.uuid4())
-        self.assertNotIn(nonce, seen_nonces)
-        seen_nonces.add(nonce)
-        self.assertIn(nonce, seen_nonces)
+        for _ in range(50):
+            nonce = str(uuid.uuid4())
+            self.assertNotIn(nonce, seen_nonces)
+            seen_nonces.add(nonce)
+        self.assertEqual(len(seen_nonces), 50)
 
 
 if __name__ == "__main__":

@@ -48,12 +48,15 @@ def build_test_suite(tier: int = None, feature: str = None) -> unittest.TestSuit
         patterns = ["test_tier3_combinations.py"]
     elif tier == 4:
         patterns = ["test_tier4_real_world.py"]
+    elif tier == 5:
+        patterns = ["test_tier5_adversarial.py"]
     else:
         patterns = [
             "test_tier1_features.py",
             "test_tier2_boundaries.py",
             "test_tier3_combinations.py",
-            "test_tier4_real_world.py"
+            "test_tier4_real_world.py",
+            "test_tier5_adversarial.py"
         ]
 
     for pat in patterns:
@@ -83,8 +86,8 @@ def _iterate_tests(suite):
 
 def main():
     parser = argparse.ArgumentParser(description="Payment Gateway Platform E2E Test Runner")
-    parser.add_argument("--all", action="store_true", help="Run all 4 Tiers of test suites")
-    parser.add_argument("--tier", type=int, choices=[1, 2, 3, 4], help="Run a specific Tier (1-4)")
+    parser.add_argument("--all", action="store_true", help="Run all 5 Tiers of test suites")
+    parser.add_argument("--tier", type=int, choices=[1, 2, 3, 4, 5], help="Run a specific Tier (1-5)")
     parser.add_argument("--feature", type=str, help="Filter tests by Feature ID (e.g. F01, F09)")
     parser.add_argument("--verbose", "-v", action="store_true", help="Verbose test execution output")
     parser.add_argument("--json", action="store_true", help="Output results in JSON format")

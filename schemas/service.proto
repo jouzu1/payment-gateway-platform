@@ -428,3 +428,152 @@ message Run3WayReconciliationResponse {
   int32 amount_discrepancy_count = 5;
   string status = 6;
 }
+
+// =============================================================================
+// 7. P2P LENDING & REGULATORY ESCROW SERVICE
+// =============================================================================
+
+enum LoanStatus {
+  LOAN_STATUS_UNSPECIFIED = 0;
+  APPLICATION = 1;
+  FUNDING = 2;
+  FUNDED = 3;
+  PENDING_DISBURSEMENT = 4;
+  DISBURSED = 5;
+  ACTIVE = 6;
+  DELINQUENT = 7;
+  IN_DEFAULT = 8;
+  CLOSED = 9;
+}
+
+enum InstallmentStatus {
+  INSTALLMENT_STATUS_UNSPECIFIED = 0;
+  SCHEDULED = 1;
+  DUE = 2;
+  AUTODEBIT_INITIATED = 3;
+  COLLECTED = 4;
+  PAID = 5;
+  PARTIALLY_PAID = 6;
+  DELINQUENT = 7;
+  IN_DEFAULT = 8;
+}
+
+service LoanService {
+  rpc CreateLoan(CreateLoanRequest) returns (CreateLoanResponse);
+  rpc DisburseLoan(DisburseLoanRequest) returns (DisburseLoanResponse);
+  rpc ProcessRepayment(ProcessRepaymentRequest) returns (ProcessRepaymentResponse);
+  rpc GetLoanSchedule(GetLoanScheduleRequest) returns (GetLoanScheduleResponse);
+  rpc GetWaterfallSplit(GetWaterfallSplitRequest) returns (GetWaterfallSplitResponse);
+}
+
+message CreateLoanRequest {
+  string idempotency_key = 1;
+  string borrower_id = 2;
+  string platform_merchant_id = 3;
+  Money principal_money = 4;
+  double annual_interest_rate = 5;
+  int32 tenor_months = 6;
+  string escrow_account_id = 7;
+  map<string, string> metadata = 8;
+}
+
+message CreateLoanResponse {
+  string loan_id = 1;
+  string loan_reference = 2;
+  LoanStatus status = 3;
+  Money principal_money = 4;
+  string escrow_account_id = 5;
+  google.protobuf.Timestamp created_at = 6;
+}
+
+message DisburseLoanRequest {
+  string idempotency_key = 1;
+  string loan_id = 2;
+  string disbursement_account_id = 3;
+  string payout_channel = 4;
+}
+
+message DisburseLoanResponse {
+  string loan_id = 1;
+  string disbursement_payout_id = 2;
+  LoanStatus status = 3;
+  google.protobuf.Timestamp disbursed_at = 4;
+}
+
+message ProcessRepaymentRequest {
+  string idempotency_key = 1;
+  string loan_id = 2;
+  int32 installment_sequence = 3;
+  string payment_method_id = 4;
+  Money collection_money = 5;
+}
+
+message ProcessRepaymentResponse {
+  string loan_id = 1;
+  string installment_id = 2;
+  string repayment_transaction_id = 3;
+  Money gross_collected = 4;
+  Money principal_allocated = 5;
+  Money interest_allocated = 6;
+  Money platform_fee = 7;
+  Money withholding_tax = 8;
+  Money overpayment_amount = 9;
+  int32 splits_count = 10;
+  string status = 11;
+  google.protobuf.Timestamp processed_at = 12;
+}
+
+message InstallmentScheduleItem {
+  string installment_id = 1;
+  int32 installment_sequence = 2;
+  string due_date = 3; // ISO 8601 date (YYYY-MM-DD)
+  Money principal_due = 4;
+  Money interest_due = 5;
+  Money penalty_due = 6;
+  Money total_due = 7;
+  Money amount_paid = 8;
+  InstallmentStatus status = 9;
+  google.protobuf.Timestamp paid_at = 10;
+}
+
+message GetLoanScheduleRequest {
+  string loan_id = 1;
+}
+
+message GetLoanScheduleResponse {
+  string loan_id = 1;
+  string loan_reference = 2;
+  LoanStatus status = 3;
+  Money total_principal = 4;
+  Money total_interest = 5;
+  repeated InstallmentScheduleItem installments = 6;
+}
+
+message InvestorWaterfallSplit {
+  string split_id = 1;
+  string investor_id = 2;
+  Money principal_allocated = 3;
+  Money interest_allocated = 4;
+  Money platform_servicing_fee = 5;
+  Money withholding_tax = 6;
+  Money net_investor_payout = 7;
+  double share_percentage = 8;
+}
+
+message GetWaterfallSplitRequest {
+  string installment_id = 1;
+}
+
+message GetWaterfallSplitResponse {
+  string installment_id = 1;
+  string loan_id = 2;
+  string repayment_transaction_id = 3;
+  Money gross_collected = 4;
+  Money principal_allocated = 5;
+  Money interest_allocated = 6;
+  Money platform_servicing_fee = 7;
+  Money withholding_tax = 8;
+  Money overpayment_amount = 9;
+  repeated InvestorWaterfallSplit splits = 10;
+  google.protobuf.Timestamp created_at = 11;
+}

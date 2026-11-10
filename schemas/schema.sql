@@ -433,11 +433,14 @@ CREATE TABLE journal_entries (
     correlation_id VARCHAR(128) NOT NULL,
     transaction_type VARCHAR(64) NOT NULL,             -- 'PAYIN', 'PAYOUT', 'P2P_WATERFALL', 'FEE'
     description TEXT,
+    previous_entry_hash VARCHAR(64),                   -- SHA-256 hash of previous journal entry in audit chain
+    entry_hash VARCHAR(64),                            -- SHA-256 tamper-evident hash of current entry
     posted_at TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp()
 );
 
 CREATE INDEX idx_journal_entries_corr ON journal_entries(correlation_id);
 CREATE INDEX idx_journal_entries_posted ON journal_entries(posted_at DESC);
+CREATE INDEX idx_journal_entries_entry_hash ON journal_entries(entry_hash);
 
 CREATE TABLE entry_legs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -587,28 +590,86 @@ CREATE TRIGGER trg_update_balance_after_leg
 AFTER INSERT ON entry_legs
 FOR EACH ROW EXECUTE FUNCTION fn_update_account_balance();
 
--- Verification Function: Ensure Double-Entry Zero-Sum Invariant
+-- Tamper-Evident SHA-256 Hash Chaining Function
+CREATE OR REPLACE FUNCTION fn_compute_journal_entry_hash()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_prev_hash VARCHAR(64);
+    v_payload TEXT;
+BEGIN
+    IF NEW.previous_entry_hash IS NULL THEN
+        SELECT entry_hash INTO v_prev_hash
+        FROM journal_entries
+        WHERE id <> NEW.id
+        ORDER BY posted_at DESC, id DESC
+        LIMIT 1;
+
+        NEW.previous_entry_hash := COALESCE(v_prev_hash, '0000000000000000000000000000000000000000000000000000000000000000');
+    END IF;
+
+    v_payload := NEW.previous_entry_hash || ':' || NEW.id::TEXT || ':' || NEW.idempotency_key || ':' || NEW.transaction_type;
+    NEW.entry_hash := encode(digest(v_payload, 'sha256'), 'hex');
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_compute_journal_entry_hash
+BEFORE INSERT ON journal_entries
+FOR EACH ROW
+EXECUTE FUNCTION fn_compute_journal_entry_hash();
+
+-- Standalone Verification Function: Ensure Multi-Currency Zero-Sum Balance
 CREATE OR REPLACE FUNCTION fn_verify_journal_entry_balance(p_journal_entry_id UUID)
 RETURNS BOOLEAN AS $$
 DECLARE
+    v_unbalanced_currency VARCHAR(3);
     v_debit_sum BIGINT;
     v_credit_sum BIGINT;
+    v_leg_count INT;
 BEGIN
-    SELECT COALESCE(SUM(amount), 0)
-    INTO v_debit_sum
+    SELECT COUNT(*) INTO v_leg_count
     FROM entry_legs
-    WHERE journal_entry_id = p_journal_entry_id AND direction = 'DEBIT';
+    WHERE journal_entry_id = p_journal_entry_id;
 
-    SELECT COALESCE(SUM(amount), 0)
-    INTO v_credit_sum
+    IF v_leg_count < 2 THEN
+        RAISE EXCEPTION 'Double-Entry Invariant Failed for Journal Entry %: Must have at least 2 entry legs (found %)',
+            p_journal_entry_id, v_leg_count;
+    END IF;
+
+    -- Partition by currency and check that sum(DEBIT) == sum(CREDIT) for each currency
+    SELECT currency,
+           COALESCE(SUM(CASE WHEN direction = 'DEBIT' THEN amount ELSE 0 END), 0) AS debits,
+           COALESCE(SUM(CASE WHEN direction = 'CREDIT' THEN amount ELSE 0 END), 0) AS credits
+    INTO v_unbalanced_currency, v_debit_sum, v_credit_sum
     FROM entry_legs
-    WHERE journal_entry_id = p_journal_entry_id AND direction = 'CREDIT';
+    WHERE journal_entry_id = p_journal_entry_id
+    GROUP BY currency
+    HAVING COALESCE(SUM(CASE WHEN direction = 'DEBIT' THEN amount ELSE 0 END), 0) <>
+           COALESCE(SUM(CASE WHEN direction = 'CREDIT' THEN amount ELSE 0 END), 0)
+    LIMIT 1;
 
-    IF v_debit_sum <> v_credit_sum THEN
-        RAISE EXCEPTION 'Double-Entry Invariant Failed for Journal Entry %: Total Debits (%) != Total Credits (%)',
-            p_journal_entry_id, v_debit_sum, v_credit_sum;
+    IF v_unbalanced_currency IS NOT NULL THEN
+        RAISE EXCEPTION 'Double-Entry Invariant Failed for Journal Entry %: Currency % unbalanced. Total Debits (%) != Total Credits (%)',
+            p_journal_entry_id, v_unbalanced_currency, v_debit_sum, v_credit_sum;
     END IF;
 
     RETURN TRUE;
 END;
 $$ LANGUAGE plpgsql;
+
+-- Trigger Function for Deferred Constraint Trigger on Entry Legs
+CREATE OR REPLACE FUNCTION fn_trg_verify_journal_entry_balance()
+RETURNS TRIGGER AS $$
+BEGIN
+    PERFORM fn_verify_journal_entry_balance(NEW.journal_entry_id);
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Hook Deferred Constraint Trigger on entry_legs (Deferred until COMMIT)
+CREATE CONSTRAINT TRIGGER trg_verify_journal_entry_balance
+AFTER INSERT OR UPDATE ON entry_legs
+DEFERRABLE INITIALLY DEFERRED
+FOR EACH ROW
+EXECUTE FUNCTION fn_trg_verify_journal_entry_balance();

@@ -208,11 +208,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/PayoutOrder'
         '403':
-          description: Sanctions screening failed or recipient blocked.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+          $ref: '#/components/responses/ForbiddenError'
 
   /v1/payouts/{id}:
     get:
@@ -398,11 +394,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/JournalEntryReceipt'
         '422':
-          description: Balance mismatch or debit/credit unbalance.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+          $ref: '#/components/responses/UnprocessableEntityError'
 
   /v1/webhooks/endpoints:
     post:
@@ -454,29 +446,77 @@ components:
 
   responses:
     BadRequestError:
-      description: Invalid request payload or parameter validation failure.
+      description: Invalid request payload or parameter validation failure (RFC 7807).
       content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
         application/json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            $ref: '#/components/schemas/ProblemDetails'
+    UnauthorizedError:
+      description: Missing, invalid, or expired authentication credentials (RFC 7807).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    ForbiddenError:
+      description: Action forbidden by policy, permission scope, or sanctions screening (RFC 7807).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
     NotFoundError:
-      description: Entity not found.
+      description: Requested entity or resource not found (RFC 7807).
       content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
         application/json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            $ref: '#/components/schemas/ProblemDetails'
     IdempotencyConflictError:
-      description: Concurrent request in flight for this Idempotency-Key.
+      description: Concurrent request in flight or conflicting state for this Idempotency-Key (RFC 7807).
       content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
         application/json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            $ref: '#/components/schemas/ProblemDetails'
+    UnprocessableEntityError:
+      description: Business logic validation failure or idempotent payload mutation (RFC 7807).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    InternalServerError:
+      description: Internal gateway failure or unhandled server error (RFC 7807).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
     PaymentDeclinedError:
-      description: Card or payment authorization was declined by issuer or rail.
+      description: Card or payment authorization was declined by issuer or payment rail (RFC 7807).
       content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
         application/json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            $ref: '#/components/schemas/ProblemDetails'
 
   schemas:
     PaymentIntentStatus:
@@ -832,6 +872,10 @@ components:
           type: integer
         withholding_tax:
           type: integer
+        overpayment_amount:
+          type: integer
+          description: Surplus repayment amount routed to borrower prepayment sub-account.
+          example: 0
         splits_count:
           type: integer
 
@@ -984,3 +1028,64 @@ components:
         doc_url:
           type: string
           example: "https://docs.gateway.platform.internal/errors/INSUFFICIENT_FUNDS"
+
+    ProblemDetails:
+      type: object
+      description: RFC 7807 compliant Problem Details specification for HTTP APIs.
+      required:
+        - type
+        - title
+        - status
+      properties:
+        type:
+          type: string
+          format: uri
+          description: A URI reference identifying the problem type.
+          example: "https://errors.gateway.platform.internal/idempotency-conflict"
+        title:
+          type: string
+          description: A short, human-readable summary of the problem type.
+          example: "Idempotency Conflict"
+        status:
+          type: integer
+          description: The HTTP status code generated by origin server.
+          example: 409
+        detail:
+          type: string
+          description: A human-readable explanation specific to this occurrence.
+          example: "A concurrent request with this Idempotency-Key is currently in-flight."
+        instance:
+          type: string
+          description: A URI reference identifying the specific occurrence of the problem.
+          example: "/v1/payment_intents/pi_018b1234-abcd-7000-8000-000000000001"
+        code:
+          type: string
+          description: Platform machine-readable error code.
+          example: "IDEMPOTENCY_IN_FLIGHT"
+        invalid_params:
+          type: array
+          description: Detailed validation failures per request field.
+          items:
+            type: object
+            required:
+              - name
+              - reason
+            properties:
+              name:
+                type: string
+                example: "amount"
+              reason:
+                type: string
+                example: "Must be a positive integer minor currency unit"
+
+    Currency:
+      type: string
+      description: ISO 4217 three-letter currency code.
+      enum:
+        - USD
+        - EUR
+        - GBP
+        - IDR
+        - SGD
+        - JPY
+      example: "USD"

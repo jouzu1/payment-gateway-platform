@@ -13,18 +13,17 @@ The platform exposes an enterprise-grade RESTful API designed around the followi
 
 ## 2. Standardized Error Response Model
 
-All API errors return a uniform JSON schema adhering to RFC 7807 (Problem Details for HTTP APIs) semantics:
+All API errors return a uniform schema adhering to RFC 7807 (Problem Details for HTTP APIs) using the `application/problem+json` media type:
 
 ```json
 {
-  "error": {
-    "code": "INSUFFICIENT_FUNDS",
-    "message": "The issuing bank declined the transaction due to insufficient available funds.",
-    "param": "payment_token",
-    "type": "card_error",
-    "doc_url": "https://docs.gateway.platform.internal/errors/INSUFFICIENT_FUNDS",
-    "request_id": "req_8df72a91-4b1e-4122-8391-7291a82bc192"
-  }
+  "type": "https://errors.gateway.platform.internal/insufficient-funds",
+  "title": "Insufficient Funds",
+  "status": 400,
+  "detail": "The issuing bank declined the transaction due to insufficient available funds.",
+  "instance": "/v1/payment_intents/pi_018b1234-abcd-7000-8000-000000000001",
+  "code": "INSUFFICIENT_FUNDS",
+  "doc_url": "https://docs.gateway.platform.internal/errors/INSUFFICIENT_FUNDS"
 }
 ```
 
