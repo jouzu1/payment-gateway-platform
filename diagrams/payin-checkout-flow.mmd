@@ -1,0 +1,37 @@
+sequenceDiagram
+    autonumber
+    actor Customer as Payer / Cardholder
+    actor Merchant as Merchant Web/Mobile App
+    participant Vault as PCI Token Vault
+    participant Gateway as Payment Gateway
+    participant DS as 3DS Directory Server
+    participant ACS as Issuer Access Control Server
+    participant Acquirer as Card Acquirer / Scheme
+    participant Ledger as Double-Entry Ledger
+
+    Merchant->>Gateway: POST /v1/payment_intents {amount: $250.00, currency: USD}
+    Gateway-->>Merchant: PaymentIntent Created {client_secret: "pi_sec_891"}
+
+    Customer->>Vault: Submit Card Details (PAN, CVV, Exp) via Hosted Fields
+    Vault-->>Customer: Return Ephemeral Token ("tok_vault_901")
+
+    Customer->>Gateway: POST /v1/payment_intents/{id}/confirm {token: "tok_vault_901"}
+    Gateway->>DS: 3DS2 Authentication Request (AReq)
+
+    alt Frictionless Flow (Low Risk)
+        DS->>ACS: Evaluate Device / Transaction Profile
+        ACS-->>DS: Authentication Response (ARes: transStatus = 'Y')
+        DS-->>Gateway: Frictionless Approved (CAVV Cryptogram Generated)
+    else Challenge Flow (Step-up Verification)
+        DS-->>Gateway: ARes: transStatus = 'C' (Challenge Required)
+        Gateway-->>Customer: Render ACS Challenge OTP Dialog
+        Customer->>ACS: Submit OTP / Biometric Verification
+        ACS-->>Gateway: Challenge Response (CRes: transStatus = 'Y')
+    end
+
+    Gateway->>Acquirer: ISO 8583 Authorization Request (0100) + CAVV
+    Acquirer-->>Gateway: Authorization Approved (0110, AuthCode: "AUTH_7812")
+
+    Gateway->>Ledger: BookHold(Debit: CardReceivable, Credit: MerchantPendingBalance)
+    Gateway-->>Merchant: Webhook: payment_intent.succeeded
+    Gateway-->>Customer: Checkout Complete (Redirect to Success URL)

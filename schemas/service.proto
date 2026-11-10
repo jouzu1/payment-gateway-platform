@@ -1,0 +1,430 @@
+syntax = "proto3";
+
+package payment.gateway.v1;
+
+option go_package = "github.com/jouzu1/payment-gateway-platform/gen/go/v1;gatewayv1";
+option java_multiple_files = true;
+option java_package = "com.payment.gateway.v1";
+
+import "google/protobuf/timestamp.proto";
+
+// =============================================================================
+// COMMON ENUMS & MESSAGES
+// =============================================================================
+
+enum Currency {
+  CURRENCY_UNSPECIFIED = 0;
+  USD = 1;
+  EUR = 2;
+  GBP = 3;
+  IDR = 4;
+  SGD = 5;
+  JPY = 6;
+  INR = 7;
+}
+
+enum EntryDirection {
+  DIRECTION_UNSPECIFIED = 0;
+  DEBIT = 1;
+  CREDIT = 2;
+}
+
+enum AccountCategory {
+  CATEGORY_UNSPECIFIED = 0;
+  ASSET = 1;
+  LIABILITY = 2;
+  EQUITY = 3;
+  REVENUE = 4;
+  EXPENSE = 5;
+}
+
+enum TransactionStatus {
+  TX_STATUS_UNSPECIFIED = 0;
+  INITIALIZED = 1;
+  PENDING = 2;
+  AUTHORIZED = 3;
+  CAPTURED = 4;
+  SETTLED = 5;
+  FAILED = 6;
+  REVERSED = 7;
+}
+
+message Money {
+  int64 amount = 1; // Minor currency units (e.g. cents)
+  string currency = 2; // ISO 4217 code
+}
+
+// =============================================================================
+// 1. PAYMENT SERVICE (ACQUIRING & PAYIN)
+// =============================================================================
+
+service PaymentService {
+  rpc AuthorizePayment(AuthorizePaymentRequest) returns (AuthorizePaymentResponse);
+  rpc CapturePayment(CapturePaymentRequest) returns (CapturePaymentResponse);
+  rpc CancelPayment(CancelPaymentRequest) returns (CancelPaymentResponse);
+  rpc RefundPayment(RefundPaymentRequest) returns (RefundPaymentResponse);
+}
+
+message AuthorizePaymentRequest {
+  string idempotency_key = 1;
+  string payment_intent_id = 2;
+  string merchant_id = 3;
+  Money money = 4;
+  string payment_token = 5;
+  string payment_method_type = 6;
+  map<string, string> metadata = 7;
+}
+
+message AuthorizePaymentResponse {
+  string transaction_id = 1;
+  TransactionStatus status = 2;
+  string auth_code = 3;
+  string rail_reference = 4;
+  string error_code = 5;
+  string error_message = 6;
+  google.protobuf.Timestamp authorized_at = 7;
+}
+
+message CapturePaymentRequest {
+  string idempotency_key = 1;
+  string transaction_id = 2;
+  string merchant_id = 3;
+  Money capture_amount = 4;
+}
+
+message CapturePaymentResponse {
+  string transaction_id = 1;
+  TransactionStatus status = 2;
+  Money captured_money = 3;
+  Money fee_money = 4;
+  google.protobuf.Timestamp captured_at = 5;
+}
+
+message CancelPaymentRequest {
+  string idempotency_key = 1;
+  string transaction_id = 2;
+  string reason = 3;
+}
+
+message CancelPaymentResponse {
+  string transaction_id = 1;
+  TransactionStatus status = 2;
+}
+
+message RefundPaymentRequest {
+  string idempotency_key = 1;
+  string transaction_id = 2;
+  string merchant_id = 3;
+  Money refund_amount = 4;
+  string reason = 5;
+}
+
+message RefundPaymentResponse {
+  string refund_id = 1;
+  string transaction_id = 2;
+  TransactionStatus status = 3;
+  google.protobuf.Timestamp refunded_at = 4;
+}
+
+// =============================================================================
+// 2. PAYOUT SERVICE (LOCAL & CROSS-BORDER REMITTANCE)
+// =============================================================================
+
+service PayoutService {
+  rpc ValidateBeneficiary(ValidateBeneficiaryRequest) returns (ValidateBeneficiaryResponse);
+  rpc SubmitPayout(SubmitPayoutRequest) returns (SubmitPayoutResponse);
+  rpc QueryPayoutStatus(QueryPayoutStatusRequest) returns (QueryPayoutStatusResponse);
+  rpc CancelPayout(CancelPayoutRequest) returns (CancelPayoutResponse);
+}
+
+message ValidateBeneficiaryRequest {
+  string bank_code = 1;
+  string account_number = 2;
+  string country = 3;
+}
+
+message ValidateBeneficiaryResponse {
+  bool is_valid = 1;
+  string account_holder_name = 2;
+  string bank_name = 3;
+  string validation_reference = 4;
+}
+
+message SubmitPayoutRequest {
+  string idempotency_key = 1;
+  string merchant_id = 2;
+  string payout_type = 3; // "LOCAL_INSTANT", "LOCAL_BATCH", "CROSS_BORDER"
+  Money source_money = 4;
+  Money target_money = 5;
+  string fx_quote_id = 6;
+  string beneficiary_name = 7;
+  string beneficiary_account = 8;
+  string beneficiary_bank_code = 9;
+  string beneficiary_country = 10;
+  string purpose_code = 11;
+  string end_to_end_id = 12;
+}
+
+message SubmitPayoutResponse {
+  string payout_id = 1;
+  string status = 2;
+  string rail_code = 3;
+  string end_to_end_id = 4;
+  google.protobuf.Timestamp submitted_at = 5;
+}
+
+message QueryPayoutStatusRequest {
+  string payout_id = 1;
+  string end_to_end_id = 2;
+}
+
+message QueryPayoutStatusResponse {
+  string payout_id = 1;
+  string status = 2;
+  string rail_code = 3;
+  string rail_reference = 4;
+  string error_code = 5;
+  string error_message = 6;
+  google.protobuf.Timestamp settled_at = 7;
+}
+
+message CancelPayoutRequest {
+  string payout_id = 1;
+  string reason = 2;
+}
+
+message CancelPayoutResponse {
+  string payout_id = 1;
+  bool cancelled = 2;
+}
+
+// =============================================================================
+// 3. LEDGER SERVICE (DOUBLE-ENTRY BOOKKEEPING)
+// =============================================================================
+
+service LedgerService {
+  rpc CreateJournalEntry(CreateJournalEntryRequest) returns (CreateJournalEntryResponse);
+  rpc HoldFunds(HoldFundsRequest) returns (HoldFundsResponse);
+  rpc ReleaseHold(ReleaseHoldRequest) returns (ReleaseHoldResponse);
+  rpc CommitHold(CommitHoldRequest) returns (CommitHoldResponse);
+  rpc GetAccountBalance(GetAccountBalanceRequest) returns (GetAccountBalanceResponse);
+}
+
+message EntryLeg {
+  string account_id = 1;
+  EntryDirection direction = 2;
+  Money money = 3;
+  int32 sequence_order = 4;
+}
+
+message CreateJournalEntryRequest {
+  string idempotency_key = 1;
+  string correlation_id = 2;
+  string transaction_type = 3;
+  string description = 4;
+  repeated EntryLeg legs = 5;
+}
+
+message CreateJournalEntryResponse {
+  string entry_id = 1;
+  string status = 2;
+  google.protobuf.Timestamp posted_at = 3;
+}
+
+message HoldFundsRequest {
+  string idempotency_key = 1;
+  string account_id = 2;
+  Money hold_money = 3;
+  string reservation_id = 4;
+  int64 ttl_seconds = 5;
+}
+
+message HoldFundsResponse {
+  string reservation_id = 1;
+  bool success = 2;
+  int64 available_balance_after = 3;
+}
+
+message ReleaseHoldRequest {
+  string reservation_id = 1;
+  string reason = 2;
+}
+
+message ReleaseHoldResponse {
+  string reservation_id = 1;
+  bool released = 2;
+}
+
+message CommitHoldRequest {
+  string reservation_id = 1;
+  string destination_account_id = 2;
+  Money final_amount = 3;
+}
+
+message CommitHoldResponse {
+  string reservation_id = 1;
+  string journal_entry_id = 2;
+  bool committed = 3;
+}
+
+message GetAccountBalanceRequest {
+  string account_id = 1;
+}
+
+message GetAccountBalanceResponse {
+  string account_id = 1;
+  string currency = 2;
+  int64 cleared_balance = 3;
+  int64 pending_balance = 4;
+  int64 version = 5;
+  google.protobuf.Timestamp updated_at = 6;
+}
+
+// =============================================================================
+// 4. SMART ROUTING SERVICE
+// =============================================================================
+
+service RoutingService {
+  rpc EvaluateRoute(EvaluateRouteRequest) returns (EvaluateRouteResponse);
+  rpc ReportRailHealth(ReportRailHealthRequest) returns (ReportRailHealthResponse);
+}
+
+message EvaluateRouteRequest {
+  string transaction_type = 1; // "PAYIN", "PAYOUT"
+  string payment_method = 2;
+  Money money = 3;
+  string source_bank = 4;
+  string destination_bank = 5;
+  string corridor = 6;
+}
+
+message RouteOption {
+  string rail_code = 1;
+  int64 estimated_fee_minor = 2;
+  int64 estimated_latency_ms = 3;
+  double success_rate_percent = 4;
+  int32 priority_rank = 5;
+}
+
+message EvaluateRouteResponse {
+  string selected_rail_code = 1;
+  repeated RouteOption fallback_rails = 2;
+  string routing_decision_id = 3;
+}
+
+message ReportRailHealthRequest {
+  string rail_code = 1;
+  bool is_healthy = 2;
+  int64 latency_ms = 3;
+  string error_code = 4;
+}
+
+message ReportRailHealthResponse {
+  bool acknowledged = 1;
+}
+
+// =============================================================================
+// 5. RISK, COMPLIANCE & AML SERVICE
+// =============================================================================
+
+service RiskService {
+  rpc ScreenParty(ScreenPartyRequest) returns (ScreenPartyResponse);
+  rpc Evaluate3DSRisk(Evaluate3DSRiskRequest) returns (Evaluate3DSRiskResponse);
+  rpc ScreenTransaction(ScreenTransactionRequest) returns (ScreenTransactionResponse);
+}
+
+message ScreenPartyRequest {
+  string entity_type = 1; // "SENDER", "BENEFICIARY"
+  string full_name = 2;
+  string date_of_birth = 3;
+  string country = 4;
+}
+
+message ScreenPartyResponse {
+  string screening_id = 1;
+  string match_status = 2; // "CLEAN", "POTENTIAL_MATCH", "CONFIRMED_SANCTION"
+  double match_score = 3;
+  repeated string matched_lists = 4;
+}
+
+message Evaluate3DSRiskRequest {
+  string payment_intent_id = 1;
+  Money money = 2;
+  string card_bin = 3;
+  string ip_address = 4;
+  string device_fingerprint = 5;
+  string user_agent = 6;
+}
+
+message Evaluate3DSRiskResponse {
+  string risk_recommendation = 1; // "FRICTIONLESS", "CHALLENGE", "REJECT"
+  int32 risk_score = 2; // 0 - 100
+  string trans_status = 3; // EMV 3DS transStatus
+}
+
+message ScreenTransactionRequest {
+  string transaction_id = 1;
+  string merchant_id = 2;
+  Money money = 3;
+  string sender_id = 4;
+  string recipient_id = 5;
+}
+
+message ScreenTransactionResponse {
+  bool is_flagged = 1;
+  string rule_triggered = 2;
+  string action_required = 3; // "ALLOW", "REVIEW", "BLOCK"
+}
+
+// =============================================================================
+// 6. SETTLEMENT & RECONCILIATION SERVICE
+// =============================================================================
+
+service SettlementService {
+  rpc ProcessCutOffBatch(ProcessCutOffBatchRequest) returns (ProcessCutOffBatchResponse);
+  rpc IngestBankStatement(IngestBankStatementRequest) returns (IngestBankStatementResponse);
+  rpc Run3WayReconciliation(Run3WayReconciliationRequest) returns (Run3WayReconciliationResponse);
+}
+
+message ProcessCutOffBatchRequest {
+  string merchant_id = 1;
+  string currency = 2;
+  google.protobuf.Timestamp cut_off_time = 3;
+}
+
+message ProcessCutOffBatchResponse {
+  string batch_id = 1;
+  int32 transaction_count = 2;
+  Money total_gross = 3;
+  Money total_fee = 4;
+  Money total_net = 5;
+  string status = 6;
+}
+
+message IngestBankStatementRequest {
+  string bank_code = 1;
+  string statement_format = 2; // "CAMT_053", "MT940", "BAI2"
+  bytes raw_statement_payload = 3;
+  string statement_reference = 4;
+}
+
+message IngestBankStatementResponse {
+  string ingestion_id = 1;
+  int32 total_entries_parsed = 2;
+  Money opening_balance = 3;
+  Money closing_balance = 4;
+}
+
+message Run3WayReconciliationRequest {
+  string reconciliation_date = 1; // YYYY-MM-DD
+  string currency = 2;
+}
+
+message Run3WayReconciliationResponse {
+  string recon_run_id = 1;
+  int32 matched_count = 2;
+  int32 internal_unmatched_count = 3;
+  int32 bank_unmatched_count = 4;
+  int32 amount_discrepancy_count = 5;
+  string status = 6;
+}

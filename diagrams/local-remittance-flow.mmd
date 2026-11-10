@@ -1,0 +1,39 @@
+sequenceDiagram
+    autonumber
+    actor Merchant as Merchant System
+    participant Gateway as API Gateway
+    participant PayoutSvc as Payout Service
+    participant Ledger as Double-Entry Ledger
+    participant Router as Smart Routing Engine
+    participant RailSPI as Domestic Rail SPI (FedNow / BI-FAST)
+    participant Switch as Central Bank Switch / Domestic Clearing
+
+    Note over Merchant,Gateway: Step 1: Beneficiary Account Probe
+    Merchant->>Gateway: POST /v1/payouts/validate-beneficiary {bank_code, account_no}
+    Gateway->>PayoutSvc: ValidateBeneficiary()
+    PayoutSvc->>RailSPI: validateBeneficiary()
+    RailSPI->>Switch: ISO 20022 camt.059 Account Probe Request
+    Switch-->>RailSPI: camt.060 Probe Response (Account Holder: "PT MAJU PERKASA")
+    RailSPI-->>PayoutSvc: BeneficiaryVerified
+    PayoutSvc-->>Gateway: 200 OK {is_valid: true, account_name: "PT MAJU PERKASA"}
+    Gateway-->>Merchant: Beneficiary Name Confirmed
+
+    Note over Merchant,Gateway: Step 2: Payout Initiation & Idempotency Locking
+    Merchant->>Gateway: POST /v1/payouts (Idempotency-Key: "idemp_8921", amount: $5,000)
+    Gateway->>PayoutSvc: SubmitPayout()
+    PayoutSvc->>Ledger: HoldFunds(MerchantAvailableAccount, $5,000)
+    Ledger-->>PayoutSvc: HoldConfirmed(ReservationId: "res_9941")
+
+    Note over PayoutSvc,Router: Step 3: Routing & Rail Dispatch
+    PayoutSvc->>Router: EvaluateRoute(destination_bank, $5,000)
+    Router-->>PayoutSvc: SelectedRail: BI_FAST (Instant, Fee: $0.15)
+    PayoutSvc->>RailSPI: dispatchPayout(pacs.008 Credit Transfer)
+    RailSPI->>Switch: pacs.008.001.08 Credit Transfer (EndToEndId: "E2E-20261110-01")
+    Switch-->>RailSPI: Synchronous ACK (HTTP 202 Accepted)
+
+    Note over Switch,PayoutSvc: Step 4: Asynchronous Clearing Confirmation
+    Switch-->>RailSPI: Async pacs.002.001.10 Payment Status (Status: ACCP/Settled)
+    RailSPI->>PayoutSvc: PayoutSettledNotification
+    PayoutSvc->>Ledger: CommitHold("res_9941", BankTransitAccount)
+    Ledger-->>PayoutSvc: HoldCommittedJournaled
+    PayoutSvc-->>Merchant: Signed CloudEvent Webhook (payout.settled)

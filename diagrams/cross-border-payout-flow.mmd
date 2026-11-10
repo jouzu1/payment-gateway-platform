@@ -1,0 +1,40 @@
+sequenceDiagram
+    autonumber
+    actor Client as Enterprise Merchant
+    participant Ingress as API Gateway
+    participant FXSvc as FX & Treasury Service
+    participant Sanctions as AML / Sanctions Engine
+    participant PayoutSvc as Payout Service
+    participant Ledger as Double-Entry Ledger
+    participant CrossBorderSPI as Cross-Border SPI Adapter
+    participant SWIFT as SWIFT / ISO 20022 Network
+    participant LocalPartner as Last-Mile Payout Bank
+
+    Client->>Ingress: POST /v1/payouts/quotes {USD -> IDR, amount: $10,000}
+    Ingress->>FXSvc: RequestGuaranteedQuote()
+    FXSvc-->>Ingress: Quote {Rate: 15,650.00, TTL: 60s, quote_id: "fx_441"}
+    Ingress-->>Client: 201 Created (Quote Locked)
+
+    Client->>Ingress: POST /v1/payouts {quote_id: "fx_441", beneficiary_details}
+    Ingress->>PayoutSvc: SubmitCrossBorderPayout()
+    PayoutSvc->>Sanctions: ScreenParties(Sender, Beneficiary)
+    Sanctions-->>PayoutSvc: ScreeningResult: CLEAN (Fuzzy score < 0.30)
+
+    PayoutSvc->>Ledger: HoldFunds(Merchant_USD_Account, $10,000)
+    Ledger-->>PayoutSvc: FundsReserved
+
+    alt Direct Local Partner Corridor (Pre-funded Nostro)
+        PayoutSvc->>CrossBorderSPI: dispatchLastMile(LocalPartner, IDR 156,500,000)
+        CrossBorderSPI->>LocalPartner: Local Domestic Instant Credit Transfer
+        LocalPartner-->>CrossBorderSPI: Credit Confirmed
+        CrossBorderSPI-->>PayoutSvc: PayoutSettled
+        PayoutSvc->>Ledger: BookMultiCurrencyJournal(Debit: USD_Hold, Credit: FX_USD, Debit: FX_IDR, Credit: Nostro_IDR)
+    else SWIFT / ISO 20022 Correspondent Banking Network
+        PayoutSvc->>CrossBorderSPI: dispatchSWIFT(pacs.008.001.08)
+        CrossBorderSPI->>SWIFT: Send MT103 / pacs.008
+        SWIFT-->>CrossBorderSPI: pacs.002 Accepted
+        SWIFT->>CrossBorderSPI: Inbound camt.053 Statement
+        CrossBorderSPI-->>PayoutSvc: StatementReconciliationConfirmed
+    end
+
+    PayoutSvc-->>Client: Webhook (payout.cross_border.settled)

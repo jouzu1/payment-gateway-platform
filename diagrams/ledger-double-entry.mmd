@@ -1,0 +1,30 @@
+graph LR
+    subgraph Transaction_Input["Transaction Event"]
+        Tx["Customer Payin via Card: $100.00 (Fee: $2.50, Net: $97.50)"]
+    end
+
+    subgraph Journal_Entry["Atomic Journal Entry: ID = jrn_77189"]
+        Leg1["Leg 1: DEBIT Account 110100<br/>(Bank Settlement Asset: +$100.00)"]
+        Leg2["Leg 2: CREDIT Account 210100<br/>(Merchant Stored Balance: +$97.50)"]
+        Leg3["Leg 3: CREDIT Account 410100<br/>(Gateway Processing Fee: +$2.50)"]
+    end
+
+    subgraph Accounting_Equation["Fundamental Balance Equation"]
+        Assets["Assets<br/>+$100.00"] --- Equals["≡"]
+        Liabilities["Liabilities<br/>+$97.50"] --- Plus["+"]
+        Equity["Equity / Revenue<br/>+$2.50"]
+    end
+
+    Tx --> Journal_Entry
+    Leg1 --> Assets
+    Leg2 --> Liabilities
+    Leg3 --> Equity
+
+    subgraph Invariant_Validation["Zero-Sum Invariant Guard"]
+        Guard{"Sum(Debits) == Sum(Credits)<br/>$100.00 == ($97.50 + $2.50)?"}
+        Commit["State: COMMITTED (Append-Only)"]
+        Reject["State: REJECTED (Rollback)"]
+        Guard -->|True| Commit
+        Guard -->|False| Reject
+    end
+    Journal_Entry --> Invariant_Validation

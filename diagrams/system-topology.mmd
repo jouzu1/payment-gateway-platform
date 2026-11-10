@@ -1,0 +1,46 @@
+graph TB
+    subgraph Edge_Ingress["Edge Ingress & Perimeter Security Layer"]
+        DNS["Route 53 / Anycast DNS"] --> WAF["AWS WAF + Shield Advanced"]
+        WAF --> NLB["Layer 4 AWS Network Load Balancers (Multi-AZ)"]
+        NLB --> EnvoyMesh["Envoy / Kong API Gateway Mesh (mTLS / HMAC / Idempotency-Key)"]
+    end
+
+    subgraph Product_Orchestration["Product Orchestration Layer (Workflow DAG)"]
+        EnvoyMesh --> LocalRemitWF["Local Remittance Engine"]
+        EnvoyMesh --> CrossBorderWF["Cross-Border Payout Engine"]
+        EnvoyMesh --> PayinWF["Payin / Acquiring Engine"]
+        EnvoyMesh --> P2PLendingWF["P2P Lending Escrow Engine"]
+    end
+
+    subgraph Core_Domain_Services["Core Domain Microservices (gRPC / Kubernetes EKS)"]
+        LocalRemitWF & CrossBorderWF & PayinWF & P2PLendingWF --> IntentSvc["PaymentIntent / PayoutOrder Service"]
+        IntentSvc --> RoutingSvc["Smart Routing Engine"]
+        IntentSvc --> RiskSvc["Risk, Fraud & 3DS Service"]
+        IntentSvc --> SanctionsSvc["Real-Time AML / Sanctions Screening"]
+        IntentSvc --> FXSvc["Corridor & Guaranteed FX Quote Service"]
+        IntentSvc --> LedgerSvc["Immutable Double-Entry Ledger Subsystem"]
+        IntentSvc --> SettlementSvc["Settlement & Automated 3-Way Reconciliation"]
+    end
+
+    subgraph State_Storage["Storage & Streaming Tier (3-AZ Synchronous)"]
+        LedgerSvc --> AuroraDB[("Aurora PostgreSQL Multi-AZ (ACID Storage)")]
+        LedgerSvc --> Disruptor["LMAX Disruptor In-Memory Single-Writer Core"]
+        IntentSvc --> RedisCluster[("Redis Cluster (Idempotency Locks & Rate Limiting)")]
+        IntentSvc --> KafkaCluster[["Apache Kafka Event Bus (Replication Factor = 3)"]]
+        AuroraDB -.-> Debezium["Debezium CDC (Transactional Outbox)"]
+        Debezium -.-> KafkaCluster
+    end
+
+    subgraph Rail_SPI_Layer["Pluggable Rail Abstraction Layer (SPI Adapters)"]
+        RoutingSvc --> CardSPI["Card Acquirer SPI (Visa / MC / CyberSource)"]
+        RoutingSvc --> InstantSPI["Domestic Instant Rail SPI (FedNow / BI-FAST / UPI)"]
+        RoutingSvc --> CrossBorderSPI["Cross-Border SPI (SWIFT / ISO 20022 pacs.008)"]
+        RoutingSvc --> WalletSPI["E-Wallet & QR SPI (QRIS / Pix / Apple Pay)"]
+    end
+
+    subgraph External_Networks["External Financial Networks & Central Switches"]
+        CardSPI --> CardSchemes["Card Networks (Visa / Mastercard)"]
+        InstantSPI --> CentralBanks["Central Bank RTGS & Domestic Switches"]
+        CrossBorderSPI --> CorrBanks["Correspondent Banking Networks"]
+        WalletSPI --> PartnerWallets["Wallet Providers & QR Aggregators"]
+    end

@@ -1,0 +1,62 @@
+graph TB
+    subgraph Global_DNS["Global Anycast DNS & Failover Layer"]
+        DNS["AWS Route 53 ARC Control Plane (Health Checks & Routing Controls)"]
+    end
+
+    subgraph Primary_Region["Primary Region: ap-southeast-1 (Multi-AZ Active-Active: RPO=0, RTO < 3s)"]
+        direction TB
+        subgraph Ingress_Tier["Layer 4 Ingress (Cross-Zone Enabled)"]
+            NLB_A["NLB Node (AZ-A)"]
+            NLB_B["NLB Node (AZ-B)"]
+            NLB_C["NLB Node (AZ-C)"]
+        end
+
+        subgraph Ingress_Mesh["Envoy / Kong API Gateway Mesh"]
+            Envoy_A["Envoy Gateway (AZ-A)"]
+            Envoy_B["Envoy Gateway (AZ-B)"]
+            Envoy_C["Envoy Gateway (AZ-C)"]
+        end
+
+        subgraph Compute_Grid["EKS Graviton Application Cluster (Pod Anti-Affinity)"]
+            App_A["Payment Orchestrator (AZ-A)"]
+            App_B["Payment Orchestrator (AZ-B)"]
+            App_C["Payment Orchestrator (AZ-C)"]
+        end
+
+        subgraph Streaming_Cluster["Apache Kafka Cluster (RF=3, min.isr=2, acks=all)"]
+            Kafka_A["Broker 1 (AZ-A)"]
+            Kafka_B["Broker 2 (AZ-B)"]
+            Kafka_C["Broker 3 (AZ-C)"]
+        end
+
+        subgraph Database_Cluster["Aurora PostgreSQL Multi-AZ (Sync 6-Way Storage)"]
+            DB_Writer["Aurora Primary Writer (AZ-A)"]
+            DB_Reader_B["Aurora Read Replica (AZ-B)"]
+            DB_Reader_C["Aurora Read Replica (AZ-C)"]
+        end
+    end
+
+    subgraph Secondary_Region["Secondary Region: ap-southeast-3 (Warm Standby DR: RPO <= 1s, RTO < 30s)"]
+        direction TB
+        DR_Ingress["Standby NLB & Envoy Gateway"]
+        DR_EKS["Standby EKS Cluster (Autoscaled Min Pods)"]
+        DR_Kafka["Standby Kafka Cluster (MirrorMaker 2.0)"]
+        DR_Aurora["Aurora Global Database (Secondary Read/Write Cluster)"]
+    end
+
+    DNS -->|Primary Traffic: 100%| NLB_A & NLB_B & NLB_C
+    DNS -.->|Failover Traffic: 0% / 100% on Cutover| DR_Ingress
+
+    NLB_A & NLB_B & NLB_C --> Envoy_A & Envoy_B & Envoy_C
+    Envoy_A & Envoy_B & Envoy_C --> App_A & App_B & App_C
+
+    App_A & App_B & App_C --> Kafka_A & Kafka_B & Kafka_C
+    App_A & App_B & App_C --> DB_Writer
+    DB_Writer --- DB_Reader_B & DB_Reader_C
+
+    %% Asynchronous Cross-Region Replication Pipelines
+    DB_Writer == Asynchronous Physical Storage Replication ==> DR_Aurora
+    Streaming_Cluster == MirrorMaker 2.0 CDC Stream ==> DR_Kafka
+    DR_Ingress --> DR_EKS
+    DR_EKS --> DR_Kafka
+    DR_EKS --> DR_Aurora

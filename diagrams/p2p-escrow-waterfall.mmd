@@ -1,0 +1,29 @@
+graph TD
+    subgraph Repayment_Collection["1. Repayment Collection into FBO Escrow"]
+        Borrower["Borrower Repayment (VA / Auto-Debit)"] -->|"Gross Repayment: $1,150.00"| EscrowBank["Bank Custodian FBO Trust Escrow"]
+    end
+
+    subgraph Mathematical_Waterfall_Engine["2. Deterministic Mathematical Waterfall Split Engine"]
+        EscrowBank --> SplitRule{"Priority Split Evaluation"}
+        
+        SplitRule -->|"Priority 1: Late Penalty Fees"| PenaltyPool["Late Penalties: $50.00"]
+        SplitRule -->|"Priority 2: Platform Servicing Fee"| ServicingFee["Platform Fee: $25.00"]
+        SplitRule -->|"Priority 3: Statutory Withholding Tax (WHT)"| WHTPool["WHT (15% of Gross Interest): $11.25"]
+        SplitRule -->|"Priority 4: Principal Amortization"| PrincipalPool["Total Principal: $1,000.00"]
+        SplitRule -->|"Priority 5: Net Interest Due"| NetInterestPool["Total Net Interest: $63.75"]
+    end
+
+    subgraph Fractional_Investor_Distribution["3. Fractional Investor Ledger Allocation"]
+        PrincipalPool --> InvA_P["Investor A (60%): $600.00"]
+        PrincipalPool --> InvB_P["Investor B (40%): $400.00"]
+
+        NetInterestPool --> InvA_I["Investor A (60%): $38.25"]
+        NetInterestPool --> InvB_I["Investor B (40%): $25.50"]
+    end
+
+    subgraph Segregated_Ledger_Posting["4. Double-Entry Segregated Balances"]
+        PenaltyPool & ServicingFee -->|"Credit"| PlatformRev["Platform Revenue Liability: $75.00"]
+        WHTPool -->|"Credit"| TaxAuthority["Tax Escrow Payable: $11.25"]
+        InvA_P & InvA_I -->|"Credit"| InvA_Wallet["Investor A FBO Wallet: $638.25"]
+        InvB_P & InvB_I -->|"Credit"| InvB_Wallet["Investor B FBO Wallet: $425.50"]
+    end

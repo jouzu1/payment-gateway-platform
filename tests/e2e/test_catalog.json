@@ -1,0 +1,1991 @@
+{
+  "total_tests": 279,
+  "tiers": {
+    "tier1": 125,
+    "tier2": 125,
+    "tier3": 25,
+    "tier4": 4
+  },
+  "features": {
+    "F01": 10,
+    "F02": 10,
+    "F03": 10,
+    "F04": 10,
+    "F05": 10,
+    "F06": 10,
+    "F07": 10,
+    "F08": 10,
+    "F09": 10,
+    "F10": 10,
+    "F11": 10,
+    "F12": 10,
+    "F13": 10,
+    "F14": 10,
+    "F15": 10,
+    "F16": 10,
+    "F17": 10,
+    "F18": 10,
+    "F19": 10,
+    "F20": 10,
+    "F21": 10,
+    "F22": 10,
+    "F23": 10,
+    "F24": 10,
+    "F25": 10
+  },
+  "tests": [
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f01_01_ingress_hmac_valid_signature",
+      "name": "test_f01_01_ingress_hmac_valid_signature",
+      "tier": 1,
+      "feature": "F01",
+      "description": "test_f01_01_ingress_hmac_valid_signature"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f01_02_ingress_rate_limiting_allows_normal_traffic",
+      "name": "test_f01_02_ingress_rate_limiting_allows_normal_traffic",
+      "tier": 1,
+      "feature": "F01",
+      "description": "test_f01_02_ingress_rate_limiting_allows_normal_traffic"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f01_03_ingress_3az_load_balancing_distribution",
+      "name": "test_f01_03_ingress_3az_load_balancing_distribution",
+      "tier": 1,
+      "feature": "F01",
+      "description": "test_f01_03_ingress_3az_load_balancing_distribution"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f01_04_ingress_mtls_tls13_cipher_negotiation",
+      "name": "test_f01_04_ingress_mtls_tls13_cipher_negotiation",
+      "tier": 1,
+      "feature": "F01",
+      "description": "test_f01_04_ingress_mtls_tls13_cipher_negotiation"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f01_05_ingress_healthcheck_readiness_probe",
+      "name": "test_f01_05_ingress_healthcheck_readiness_probe",
+      "tier": 1,
+      "feature": "F01",
+      "description": "test_f01_05_ingress_healthcheck_readiness_probe"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f02_01_bounded_context_event_publishing",
+      "name": "test_f02_01_bounded_context_event_publishing",
+      "tier": 1,
+      "feature": "F02",
+      "description": "test_f02_01_bounded_context_event_publishing"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f02_02_bounded_context_payment_to_ledger_contract",
+      "name": "test_f02_02_bounded_context_payment_to_ledger_contract",
+      "tier": 1,
+      "feature": "F02",
+      "description": "test_f02_02_bounded_context_payment_to_ledger_contract"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f02_03_bounded_context_risk_screening_contract",
+      "name": "test_f02_03_bounded_context_risk_screening_contract",
+      "tier": 1,
+      "feature": "F02",
+      "description": "test_f02_03_bounded_context_risk_screening_contract"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f02_04_bounded_context_settlement_isolation",
+      "name": "test_f02_04_bounded_context_settlement_isolation",
+      "tier": 1,
+      "feature": "F02",
+      "description": "test_f02_04_bounded_context_settlement_isolation"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f02_05_bounded_context_cloudevent_envelope_structure",
+      "name": "test_f02_05_bounded_context_cloudevent_envelope_structure",
+      "tier": 1,
+      "feature": "F02",
+      "description": "test_f02_05_bounded_context_cloudevent_envelope_structure"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f03_01_beneficiary_probe_success",
+      "name": "test_f03_01_beneficiary_probe_success",
+      "tier": 1,
+      "feature": "F03",
+      "description": "test_f03_01_beneficiary_probe_success"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f03_02_instant_rail_dispatch_pacs008",
+      "name": "test_f03_02_instant_rail_dispatch_pacs008",
+      "tier": 1,
+      "feature": "F03",
+      "description": "test_f03_02_instant_rail_dispatch_pacs008"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f03_03_batch_clearing_window_aggregation",
+      "name": "test_f03_03_batch_clearing_window_aggregation",
+      "tier": 1,
+      "feature": "F03",
+      "description": "test_f03_03_batch_clearing_window_aggregation"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f03_04_local_remittance_state_machine_happy_path",
+      "name": "test_f03_04_local_remittance_state_machine_happy_path",
+      "tier": 1,
+      "feature": "F03",
+      "description": "test_f03_04_local_remittance_state_machine_happy_path"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f03_05_virtual_account_inbound_credit_mapping",
+      "name": "test_f03_05_virtual_account_inbound_credit_mapping",
+      "tier": 1,
+      "feature": "F03",
+      "description": "test_f03_05_virtual_account_inbound_credit_mapping"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f04_01_guaranteed_fx_quote_generation",
+      "name": "test_f04_01_guaranteed_fx_quote_generation",
+      "tier": 1,
+      "feature": "F04",
+      "description": "test_f04_01_guaranteed_fx_quote_generation"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f04_02_quote_conversion_standard_corridor_usd_idr",
+      "name": "test_f04_02_quote_conversion_standard_corridor_usd_idr",
+      "tier": 1,
+      "feature": "F04",
+      "description": "test_f04_02_quote_conversion_standard_corridor_usd_idr"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f04_03_iso20022_pain001_payout_generation",
+      "name": "test_f04_03_iso20022_pain001_payout_generation",
+      "tier": 1,
+      "feature": "F04",
+      "description": "test_f04_03_iso20022_pain001_payout_generation"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f04_04_nostro_vostro_liquidity_verification",
+      "name": "test_f04_04_nostro_vostro_liquidity_verification",
+      "tier": 1,
+      "feature": "F04",
+      "description": "test_f04_04_nostro_vostro_liquidity_verification"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f04_05_cross_border_purpose_code_validation",
+      "name": "test_f04_05_cross_border_purpose_code_validation",
+      "tier": 1,
+      "feature": "F04",
+      "description": "test_f04_05_cross_border_purpose_code_validation"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f05_01_card_emv_3ds2_frictionless_flow",
+      "name": "test_f05_01_card_emv_3ds2_frictionless_flow",
+      "tier": 1,
+      "feature": "F05",
+      "description": "test_f05_01_card_emv_3ds2_frictionless_flow"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f05_02_card_emv_3ds2_challenge_flow_success",
+      "name": "test_f05_02_card_emv_3ds2_challenge_flow_success",
+      "tier": 1,
+      "feature": "F05",
+      "description": "test_f05_02_card_emv_3ds2_challenge_flow_success"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f05_03_dynamic_qris_upi_payload_generation",
+      "name": "test_f05_03_dynamic_qris_upi_payload_generation",
+      "tier": 1,
+      "feature": "F05",
+      "description": "test_f05_03_dynamic_qris_upi_payload_generation"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f05_04_e_wallet_deep_link_redirect_session",
+      "name": "test_f05_04_e_wallet_deep_link_redirect_session",
+      "tier": 1,
+      "feature": "F05",
+      "description": "test_f05_04_e_wallet_deep_link_redirect_session"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f05_05_direct_debit_mandate_authorization",
+      "name": "test_f05_05_direct_debit_mandate_authorization",
+      "tier": 1,
+      "feature": "F05",
+      "description": "test_f05_05_direct_debit_mandate_authorization"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f06_01_custodian_fbo_escrow_account_creation",
+      "name": "test_f06_01_custodian_fbo_escrow_account_creation",
+      "tier": 1,
+      "feature": "F06",
+      "description": "test_f06_01_custodian_fbo_escrow_account_creation"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f06_02_investor_escrow_pooling_segregation",
+      "name": "test_f06_02_investor_escrow_pooling_segregation",
+      "tier": 1,
+      "feature": "F06",
+      "description": "test_f06_02_investor_escrow_pooling_segregation"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f06_03_loan_contract_origination_validation",
+      "name": "test_f06_03_loan_contract_origination_validation",
+      "tier": 1,
+      "feature": "F06",
+      "description": "test_f06_03_loan_contract_origination_validation"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f06_04_borrower_disbursement_from_fbo_escrow",
+      "name": "test_f06_04_borrower_disbursement_from_fbo_escrow",
+      "tier": 1,
+      "feature": "F06",
+      "description": "test_f06_04_borrower_disbursement_from_fbo_escrow"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f06_05_auto_debit_collection_escrow_deposit",
+      "name": "test_f06_05_auto_debit_collection_escrow_deposit",
+      "tier": 1,
+      "feature": "F06",
+      "description": "test_f06_05_auto_debit_collection_escrow_deposit"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f07_01_standard_waterfall_principal_interest_fee",
+      "name": "test_f07_01_standard_waterfall_principal_interest_fee",
+      "tier": 1,
+      "feature": "F07",
+      "description": "test_f07_01_standard_waterfall_principal_interest_fee"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f07_02_multi_investor_fractional_split_pro_rata",
+      "name": "test_f07_02_multi_investor_fractional_split_pro_rata",
+      "tier": 1,
+      "feature": "F07",
+      "description": "test_f07_02_multi_investor_fractional_split_pro_rata"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f07_03_withholding_tax_deduction_on_interest",
+      "name": "test_f07_03_withholding_tax_deduction_on_interest",
+      "tier": 1,
+      "feature": "F07",
+      "description": "test_f07_03_withholding_tax_deduction_on_interest"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f07_04_platform_servicing_fee_calculation",
+      "name": "test_f07_04_platform_servicing_fee_calculation",
+      "tier": 1,
+      "feature": "F07",
+      "description": "test_f07_04_platform_servicing_fee_calculation"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f07_05_remainder_cent_allocation_exact_total",
+      "name": "test_f07_05_remainder_cent_allocation_exact_total",
+      "tier": 1,
+      "feature": "F07",
+      "description": "test_f07_05_remainder_cent_allocation_exact_total"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f08_01_payment_rail_adapter_registration",
+      "name": "test_f08_01_payment_rail_adapter_registration",
+      "tier": 1,
+      "feature": "F08",
+      "description": "test_f08_01_payment_rail_adapter_registration"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f08_02_payout_rail_adapter_registration",
+      "name": "test_f08_02_payout_rail_adapter_registration",
+      "tier": 1,
+      "feature": "F08",
+      "description": "test_f08_02_payout_rail_adapter_registration"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f08_03_fx_rate_provider_lookup",
+      "name": "test_f08_03_fx_rate_provider_lookup",
+      "tier": 1,
+      "feature": "F08",
+      "description": "test_f08_03_fx_rate_provider_lookup"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f08_04_normalized_rail_error_code_mapping",
+      "name": "test_f08_04_normalized_rail_error_code_mapping",
+      "tier": 1,
+      "feature": "F08",
+      "description": "test_f08_04_normalized_rail_error_code_mapping"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f08_05_dynamic_rail_capability_discovery",
+      "name": "test_f08_05_dynamic_rail_capability_discovery",
+      "tier": 1,
+      "feature": "F08",
+      "description": "test_f08_05_dynamic_rail_capability_discovery"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f09_01_balanced_two_leg_journal_entry",
+      "name": "test_f09_01_balanced_two_leg_journal_entry",
+      "tier": 1,
+      "feature": "F09",
+      "description": "test_f09_01_balanced_two_leg_journal_entry"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f09_02_multi_leg_split_journal_entry",
+      "name": "test_f09_02_multi_leg_split_journal_entry",
+      "tier": 1,
+      "feature": "F09",
+      "description": "test_f09_02_multi_leg_split_journal_entry"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f09_03_zero_sum_conservation_of_value",
+      "name": "test_f09_03_zero_sum_conservation_of_value",
+      "tier": 1,
+      "feature": "F09",
+      "description": "test_f09_03_zero_sum_conservation_of_value"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f09_04_append_only_ledger_history_immutability",
+      "name": "test_f09_04_append_only_ledger_history_immutability",
+      "tier": 1,
+      "feature": "F09",
+      "description": "test_f09_04_append_only_ledger_history_immutability"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f09_05_accounting_equation_assets_eq_liabilities_equity",
+      "name": "test_f09_05_accounting_equation_assets_eq_liabilities_equity",
+      "tier": 1,
+      "feature": "F09",
+      "description": "test_f09_05_accounting_equation_assets_eq_liabilities_equity"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f10_01_usd_account_creation_and_balance",
+      "name": "test_f10_01_usd_account_creation_and_balance",
+      "tier": 1,
+      "feature": "F10",
+      "description": "test_f10_01_usd_account_creation_and_balance"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f10_02_eur_account_creation_and_balance",
+      "name": "test_f10_02_eur_account_creation_and_balance",
+      "tier": 1,
+      "feature": "F10",
+      "description": "test_f10_02_eur_account_creation_and_balance"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f10_03_zero_decimal_currency_jpy_minor_units",
+      "name": "test_f10_03_zero_decimal_currency_jpy_minor_units",
+      "tier": 1,
+      "feature": "F10",
+      "description": "test_f10_03_zero_decimal_currency_jpy_minor_units"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f10_04_three_decimal_currency_kwd_minor_units",
+      "name": "test_f10_04_three_decimal_currency_kwd_minor_units",
+      "tier": 1,
+      "feature": "F10",
+      "description": "test_f10_04_three_decimal_currency_kwd_minor_units"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f10_05_funds_hold_and_release_lifecycle",
+      "name": "test_f10_05_funds_hold_and_release_lifecycle",
+      "tier": 1,
+      "feature": "F10",
+      "description": "test_f10_05_funds_hold_and_release_lifecycle"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f11_01_least_cost_rail_selection_logic",
+      "name": "test_f11_01_least_cost_rail_selection_logic",
+      "tier": 1,
+      "feature": "F11",
+      "description": "test_f11_01_least_cost_rail_selection_logic"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f11_02_high_uptime_rail_failover_routing",
+      "name": "test_f11_02_high_uptime_rail_failover_routing",
+      "tier": 1,
+      "feature": "F11",
+      "description": "test_f11_02_high_uptime_rail_failover_routing"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f11_03_cut_off_window_batch_compilation",
+      "name": "test_f11_03_cut_off_window_batch_compilation",
+      "tier": 1,
+      "feature": "F11",
+      "description": "test_f11_03_cut_off_window_batch_compilation"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f11_04_net_settlement_batch_calculation",
+      "name": "test_f11_04_net_settlement_batch_calculation",
+      "tier": 1,
+      "feature": "F11",
+      "description": "test_f11_04_net_settlement_batch_calculation"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f11_05_merchant_settlement_payout_schedule",
+      "name": "test_f11_05_merchant_settlement_payout_schedule",
+      "tier": 1,
+      "feature": "F11",
+      "description": "test_f11_05_merchant_settlement_payout_schedule"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f12_01_clean_individual_screening_passed",
+      "name": "test_f12_01_clean_individual_screening_passed",
+      "tier": 1,
+      "feature": "F12",
+      "description": "test_f12_01_clean_individual_screening_passed"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f12_02_clean_corporate_screening_passed",
+      "name": "test_f12_02_clean_corporate_screening_passed",
+      "tier": 1,
+      "feature": "F12",
+      "description": "test_f12_02_clean_corporate_screening_passed"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f12_03_pep_screening_detection",
+      "name": "test_f12_03_pep_screening_detection",
+      "tier": 1,
+      "feature": "F12",
+      "description": "test_f12_03_pep_screening_detection"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f12_04_card_fraud_risk_score_low_acceptance",
+      "name": "test_f12_04_card_fraud_risk_score_low_acceptance",
+      "tier": 1,
+      "feature": "F12",
+      "description": "test_f12_04_card_fraud_risk_score_low_acceptance"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f12_05_transaction_velocity_check_normal",
+      "name": "test_f12_05_transaction_velocity_check_normal",
+      "tier": 1,
+      "feature": "F12",
+      "description": "test_f12_05_transaction_velocity_check_normal"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f13_01_schema_ledger_accounts_table_definition",
+      "name": "test_f13_01_schema_ledger_accounts_table_definition",
+      "tier": 1,
+      "feature": "F13",
+      "description": "test_f13_01_schema_ledger_accounts_table_definition"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f13_02_schema_journal_entries_table_definition",
+      "name": "test_f13_02_schema_journal_entries_table_definition",
+      "tier": 1,
+      "feature": "F13",
+      "description": "test_f13_02_schema_journal_entries_table_definition"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f13_03_schema_foreign_key_relationships",
+      "name": "test_f13_03_schema_foreign_key_relationships",
+      "tier": 1,
+      "feature": "F13",
+      "description": "test_f13_03_schema_foreign_key_relationships"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f13_04_schema_primary_key_and_uuid_generation",
+      "name": "test_f13_04_schema_primary_key_and_uuid_generation",
+      "tier": 1,
+      "feature": "F13",
+      "description": "test_f13_04_schema_primary_key_and_uuid_generation"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f13_05_schema_composite_indexes_for_queries",
+      "name": "test_f13_05_schema_composite_indexes_for_queries",
+      "tier": 1,
+      "feature": "F13",
+      "description": "test_f13_05_schema_composite_indexes_for_queries"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f14_01_openapi_payment_intent_create_schema",
+      "name": "test_f14_01_openapi_payment_intent_create_schema",
+      "tier": 1,
+      "feature": "F14",
+      "description": "test_f14_01_openapi_payment_intent_create_schema"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f14_02_openapi_payout_order_create_schema",
+      "name": "test_f14_02_openapi_payout_order_create_schema",
+      "tier": 1,
+      "feature": "F14",
+      "description": "test_f14_02_openapi_payout_order_create_schema"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f14_03_grpc_protobuf_transaction_service_contract",
+      "name": "test_f14_03_grpc_protobuf_transaction_service_contract",
+      "tier": 1,
+      "feature": "F14",
+      "description": "test_f14_03_grpc_protobuf_transaction_service_contract"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f14_04_api_iso4217_currency_enum_validation",
+      "name": "test_f14_04_api_iso4217_currency_enum_validation",
+      "tier": 1,
+      "feature": "F14",
+      "description": "test_f14_04_api_iso4217_currency_enum_validation"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f14_05_api_error_response_rfc7807_structure",
+      "name": "test_f14_05_api_error_response_rfc7807_structure",
+      "tier": 1,
+      "feature": "F14",
+      "description": "test_f14_05_api_error_response_rfc7807_structure"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f15_01_multi_az_traffic_distribution_ratio",
+      "name": "test_f15_01_multi_az_traffic_distribution_ratio",
+      "tier": 1,
+      "feature": "F15",
+      "description": "test_f15_01_multi_az_traffic_distribution_ratio"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f15_02_route53_arc_routing_control_healthy",
+      "name": "test_f15_02_route53_arc_routing_control_healthy",
+      "tier": 1,
+      "feature": "F15",
+      "description": "test_f15_02_route53_arc_routing_control_healthy"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f15_03_database_read_replica_load_balancing",
+      "name": "test_f15_03_database_read_replica_load_balancing",
+      "tier": 1,
+      "feature": "F15",
+      "description": "test_f15_03_database_read_replica_load_balancing"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f15_04_stateless_service_pod_anti_affinity",
+      "name": "test_f15_04_stateless_service_pod_anti_affinity",
+      "tier": 1,
+      "feature": "F15",
+      "description": "test_f15_04_stateless_service_pod_anti_affinity"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f15_05_graceful_degradation_non_critical_features",
+      "name": "test_f15_05_graceful_degradation_non_critical_features",
+      "tier": 1,
+      "feature": "F15",
+      "description": "test_f15_05_graceful_degradation_non_critical_features"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f16_01_lmax_actor_ring_buffer_dispatch",
+      "name": "test_f16_01_lmax_actor_ring_buffer_dispatch",
+      "tier": 1,
+      "feature": "F16",
+      "description": "test_f16_01_lmax_actor_ring_buffer_dispatch"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f16_02_account_partitioned_single_writer_throughput",
+      "name": "test_f16_02_account_partitioned_single_writer_throughput",
+      "tier": 1,
+      "feature": "F16",
+      "description": "test_f16_02_account_partitioned_single_writer_throughput"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f16_03_in_memory_balance_cache_lookup",
+      "name": "test_f16_03_in_memory_balance_cache_lookup",
+      "tier": 1,
+      "feature": "F16",
+      "description": "test_f16_03_in_memory_balance_cache_lookup"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f16_04_sub_millisecond_journal_entry_processing",
+      "name": "test_f16_04_sub_millisecond_journal_entry_processing",
+      "tier": 1,
+      "feature": "F16",
+      "description": "test_f16_04_sub_millisecond_journal_entry_processing"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f16_05_asynchronous_wal_flush_batching",
+      "name": "test_f16_05_asynchronous_wal_flush_batching",
+      "tier": 1,
+      "feature": "F16",
+      "description": "test_f16_05_asynchronous_wal_flush_batching"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f17_01_first_request_started_to_committed",
+      "name": "test_f17_01_first_request_started_to_committed",
+      "tier": 1,
+      "feature": "F17",
+      "description": "test_f17_01_first_request_started_to_committed"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f17_02_cached_response_replay_for_identical_request",
+      "name": "test_f17_02_cached_response_replay_for_identical_request",
+      "tier": 1,
+      "feature": "F17",
+      "description": "test_f17_02_cached_response_replay_for_identical_request"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f17_03_idempotency_replayed_header_presence",
+      "name": "test_f17_03_idempotency_replayed_header_presence",
+      "tier": 1,
+      "feature": "F17",
+      "description": "test_f17_03_idempotency_replayed_header_presence"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f17_04_idempotency_key_payload_hashing",
+      "name": "test_f17_04_idempotency_key_payload_hashing",
+      "tier": 1,
+      "feature": "F17",
+      "description": "test_f17_04_idempotency_key_payload_hashing"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f17_05_idempotency_default_ttl_24_hours",
+      "name": "test_f17_05_idempotency_default_ttl_24_hours",
+      "tier": 1,
+      "feature": "F17",
+      "description": "test_f17_05_idempotency_default_ttl_24_hours"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f18_01_saga_forward_execution_all_steps_completed",
+      "name": "test_f18_01_saga_forward_execution_all_steps_completed",
+      "tier": 1,
+      "feature": "F18",
+      "description": "test_f18_01_saga_forward_execution_all_steps_completed"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f18_02_transactional_outbox_event_generation",
+      "name": "test_f18_02_transactional_outbox_event_generation",
+      "tier": 1,
+      "feature": "F18",
+      "description": "test_f18_02_transactional_outbox_event_generation"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f18_03_monotonic_sequence_numbering_per_entity",
+      "name": "test_f18_03_monotonic_sequence_numbering_per_entity",
+      "tier": 1,
+      "feature": "F18",
+      "description": "test_f18_03_monotonic_sequence_numbering_per_entity"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f18_04_saga_state_machine_init_to_completed",
+      "name": "test_f18_04_saga_state_machine_init_to_completed",
+      "tier": 1,
+      "feature": "F18",
+      "description": "test_f18_04_saga_state_machine_init_to_completed"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f18_05_outbox_cdc_debezium_cloudevent_payload",
+      "name": "test_f18_05_outbox_cdc_debezium_cloudevent_payload",
+      "tier": 1,
+      "feature": "F18",
+      "description": "test_f18_05_outbox_cdc_debezium_cloudevent_payload"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f19_01_exact_three_way_reconciliation_match",
+      "name": "test_f19_01_exact_three_way_reconciliation_match",
+      "tier": 1,
+      "feature": "F19",
+      "description": "test_f19_01_exact_three_way_reconciliation_match"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f19_02_iso20022_camt053_statement_parsing",
+      "name": "test_f19_02_iso20022_camt053_statement_parsing",
+      "tier": 1,
+      "feature": "F19",
+      "description": "test_f19_02_iso20022_camt053_statement_parsing"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f19_03_mt940_statement_parsing",
+      "name": "test_f19_03_mt940_statement_parsing",
+      "tier": 1,
+      "feature": "F19",
+      "description": "test_f19_03_mt940_statement_parsing"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f19_04_bai2_lockbox_file_parsing",
+      "name": "test_f19_04_bai2_lockbox_file_parsing",
+      "tier": 1,
+      "feature": "F19",
+      "description": "test_f19_04_bai2_lockbox_file_parsing"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f19_05_end_of_day_batch_recon_signoff",
+      "name": "test_f19_05_end_of_day_batch_recon_signoff",
+      "tier": 1,
+      "feature": "F19",
+      "description": "test_f19_05_end_of_day_batch_recon_signoff"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f20_01_eks_graviton_karpenter_cost_efficiency_model",
+      "name": "test_f20_01_eks_graviton_karpenter_cost_efficiency_model",
+      "tier": 1,
+      "feature": "F20",
+      "description": "test_f20_01_eks_graviton_karpenter_cost_efficiency_model"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f20_02_tiered_storage_policy_nvme_to_s3_glacier",
+      "name": "test_f20_02_tiered_storage_policy_nvme_to_s3_glacier",
+      "tier": 1,
+      "feature": "F20",
+      "description": "test_f20_02_tiered_storage_policy_nvme_to_s3_glacier"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f20_03_vpc_endpoint_traffic_routing_cost_avoidance",
+      "name": "test_f20_03_vpc_endpoint_traffic_routing_cost_avoidance",
+      "tier": 1,
+      "feature": "F20",
+      "description": "test_f20_03_vpc_endpoint_traffic_routing_cost_avoidance"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f20_04_karpenter_scale_down_idle_node_consolidation",
+      "name": "test_f20_04_karpenter_scale_down_idle_node_consolidation",
+      "tier": 1,
+      "feature": "F20",
+      "description": "test_f20_04_karpenter_scale_down_idle_node_consolidation"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f20_05_finops_monthly_budget_allocation_tracking",
+      "name": "test_f20_05_finops_monthly_budget_allocation_tracking",
+      "tier": 1,
+      "feature": "F20",
+      "description": "test_f20_05_finops_monthly_budget_allocation_tracking"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f21_01_repository_8_domain_directory_structure",
+      "name": "test_f21_01_repository_8_domain_directory_structure",
+      "tier": 1,
+      "feature": "F21",
+      "description": "test_f21_01_repository_8_domain_directory_structure"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f21_02_gitignore_rules_exclude_sensitive_files",
+      "name": "test_f21_02_gitignore_rules_exclude_sensitive_files",
+      "tier": 1,
+      "feature": "F21",
+      "description": "test_f21_02_gitignore_rules_exclude_sensitive_files"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f21_03_markdown_documentation_file_naming_convention",
+      "name": "test_f21_03_markdown_documentation_file_naming_convention",
+      "tier": 1,
+      "feature": "F21",
+      "description": "test_f21_03_markdown_documentation_file_naming_convention"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f21_04_diagrams_mermaid_directory_present",
+      "name": "test_f21_04_diagrams_mermaid_directory_present",
+      "tier": 1,
+      "feature": "F21",
+      "description": "test_f21_04_diagrams_mermaid_directory_present"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f21_05_schemas_directory_contains_ddl_and_specs",
+      "name": "test_f21_05_schemas_directory_contains_ddl_and_specs",
+      "tier": 1,
+      "feature": "F21",
+      "description": "test_f21_05_schemas_directory_contains_ddl_and_specs"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f22_01_git_remote_origin_valid_github_url",
+      "name": "test_f22_01_git_remote_origin_valid_github_url",
+      "tier": 1,
+      "feature": "F22",
+      "description": "test_f22_01_git_remote_origin_valid_github_url"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f22_02_github_cli_authenticated_user_context",
+      "name": "test_f22_02_github_cli_authenticated_user_context",
+      "tier": 1,
+      "feature": "F22",
+      "description": "test_f22_02_github_cli_authenticated_user_context"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f22_03_main_branch_default_configuration",
+      "name": "test_f22_03_main_branch_default_configuration",
+      "tier": 1,
+      "feature": "F22",
+      "description": "test_f22_03_main_branch_default_configuration"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f22_04_commit_history_structured_milestones",
+      "name": "test_f22_04_commit_history_structured_milestones",
+      "tier": 1,
+      "feature": "F22",
+      "description": "test_f22_04_commit_history_structured_milestones"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f22_05_readme_overview_link_integrity",
+      "name": "test_f22_05_readme_overview_link_integrity",
+      "tier": 1,
+      "feature": "F22",
+      "description": "test_f22_05_readme_overview_link_integrity"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f23_01_markdownlint_configuration_validity",
+      "name": "test_f23_01_markdownlint_configuration_validity",
+      "tier": 1,
+      "feature": "F23",
+      "description": "test_f23_01_markdownlint_configuration_validity"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f23_02_python_schema_validator_syntax",
+      "name": "test_f23_02_python_schema_validator_syntax",
+      "tier": 1,
+      "feature": "F23",
+      "description": "test_f23_02_python_schema_validator_syntax"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f23_03_github_actions_workflow_yaml_validity",
+      "name": "test_f23_03_github_actions_workflow_yaml_validity",
+      "tier": 1,
+      "feature": "F23",
+      "description": "test_f23_03_github_actions_workflow_yaml_validity"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f23_04_ci_step_ordering_lint_validate_test",
+      "name": "test_f23_04_ci_step_ordering_lint_validate_test",
+      "tier": 1,
+      "feature": "F23",
+      "description": "test_f23_04_ci_step_ordering_lint_validate_test"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f23_05_git_pre_commit_hook_configuration",
+      "name": "test_f23_05_git_pre_commit_hook_configuration",
+      "tier": 1,
+      "feature": "F23",
+      "description": "test_f23_05_git_pre_commit_hook_configuration"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f24_01_rubric_10_dimensions_completeness",
+      "name": "test_f24_01_rubric_10_dimensions_completeness",
+      "tier": 1,
+      "feature": "F24",
+      "description": "test_f24_01_rubric_10_dimensions_completeness"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f24_02_pci_dss_level1_compliance_control_mapping",
+      "name": "test_f24_02_pci_dss_level1_compliance_control_mapping",
+      "tier": 1,
+      "feature": "F24",
+      "description": "test_f24_02_pci_dss_level1_compliance_control_mapping"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f24_03_snap_bi_bspi2030_regulatory_mapping",
+      "name": "test_f24_03_snap_bi_bspi2030_regulatory_mapping",
+      "tier": 1,
+      "feature": "F24",
+      "description": "test_f24_03_snap_bi_bspi2030_regulatory_mapping"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f24_04_four_tier_test_coverage_thresholds",
+      "name": "test_f24_04_four_tier_test_coverage_thresholds",
+      "tier": 1,
+      "feature": "F24",
+      "description": "test_f24_04_four_tier_test_coverage_thresholds"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f24_05_zero_balance_leakage_rubric_check",
+      "name": "test_f24_05_zero_balance_leakage_rubric_check",
+      "tier": 1,
+      "feature": "F24",
+      "description": "test_f24_05_zero_balance_leakage_rubric_check"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f25_01_tamper_evident_journal_hash_chain",
+      "name": "test_f25_01_tamper_evident_journal_hash_chain",
+      "tier": 1,
+      "feature": "F25",
+      "description": "test_f25_01_tamper_evident_journal_hash_chain"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f25_02_sql_injection_payload_sanitization",
+      "name": "test_f25_02_sql_injection_payload_sanitization",
+      "tier": 1,
+      "feature": "F25",
+      "description": "test_f25_02_sql_injection_payload_sanitization"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f25_03_xss_and_control_character_escaping",
+      "name": "test_f25_03_xss_and_control_character_escaping",
+      "tier": 1,
+      "feature": "F25",
+      "description": "test_f25_03_xss_and_control_character_escaping"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f25_04_timing_attack_resistant_hmac_comparison",
+      "name": "test_f25_04_timing_attack_resistant_hmac_comparison",
+      "tier": 1,
+      "feature": "F25",
+      "description": "test_f25_04_timing_attack_resistant_hmac_comparison"
+    },
+    {
+      "id": "tests.e2e.test_tier1_features.TestTier1Features.test_f25_05_replay_attack_nonce_uniqueness",
+      "name": "test_f25_05_replay_attack_nonce_uniqueness",
+      "tier": 1,
+      "feature": "F25",
+      "description": "test_f25_05_replay_attack_nonce_uniqueness"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f01_b01_ingress_hmac_tampered_payload_rejected",
+      "name": "test_f01_b01_ingress_hmac_tampered_payload_rejected",
+      "tier": 2,
+      "feature": "F01",
+      "description": "test_f01_b01_ingress_hmac_tampered_payload_rejected"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f01_b02_ingress_hmac_expired_timestamp_rejected",
+      "name": "test_f01_b02_ingress_hmac_expired_timestamp_rejected",
+      "tier": 2,
+      "feature": "F01",
+      "description": "test_f01_b02_ingress_hmac_expired_timestamp_rejected"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f01_b03_ingress_rate_limit_burst_rejection_429",
+      "name": "test_f01_b03_ingress_rate_limit_burst_rejection_429",
+      "tier": 2,
+      "feature": "F01",
+      "description": "test_f01_b03_ingress_rate_limit_burst_rejection_429"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f01_b04_ingress_empty_request_body_handling",
+      "name": "test_f01_b04_ingress_empty_request_body_handling",
+      "tier": 2,
+      "feature": "F01",
+      "description": "test_f01_b04_ingress_empty_request_body_handling"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f01_b05_ingress_oversized_payload_rejection",
+      "name": "test_f01_b05_ingress_oversized_payload_rejection",
+      "tier": 2,
+      "feature": "F01",
+      "description": "test_f01_b05_ingress_oversized_payload_rejection"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f02_b01_unmapped_event_type_dead_letter_routing",
+      "name": "test_f02_b01_unmapped_event_type_dead_letter_routing",
+      "tier": 2,
+      "feature": "F02",
+      "description": "test_f02_b01_unmapped_event_type_dead_letter_routing"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f02_b02_cross_context_timeout_circuit_breaker",
+      "name": "test_f02_b02_cross_context_timeout_circuit_breaker",
+      "tier": 2,
+      "feature": "F02",
+      "description": "test_f02_b02_cross_context_timeout_circuit_breaker"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f02_b03_corrupt_cloudevent_schema_validation_failure",
+      "name": "test_f02_b03_corrupt_cloudevent_schema_validation_failure",
+      "tier": 2,
+      "feature": "F02",
+      "description": "test_f02_b03_corrupt_cloudevent_schema_validation_failure"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f02_b04_context_isolation_boundary_violation_blocked",
+      "name": "test_f02_b04_context_isolation_boundary_violation_blocked",
+      "tier": 2,
+      "feature": "F02",
+      "description": "test_f02_b04_context_isolation_boundary_violation_blocked"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f02_b05_null_tenant_id_in_multitenant_event_rejected",
+      "name": "test_f02_b05_null_tenant_id_in_multitenant_event_rejected",
+      "tier": 2,
+      "feature": "F02",
+      "description": "test_f02_b05_null_tenant_id_in_multitenant_event_rejected"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f03_b01_beneficiary_account_not_found_rejection",
+      "name": "test_f03_b01_beneficiary_account_not_found_rejection",
+      "tier": 2,
+      "feature": "F03",
+      "description": "test_f03_b01_beneficiary_account_not_found_rejection"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f03_b02_zero_amount_local_remittance_rejected",
+      "name": "test_f03_b02_zero_amount_local_remittance_rejected",
+      "tier": 2,
+      "feature": "F03",
+      "description": "test_f03_b02_zero_amount_local_remittance_rejected"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f03_b03_negative_amount_local_remittance_rejected",
+      "name": "test_f03_b03_negative_amount_local_remittance_rejected",
+      "tier": 2,
+      "feature": "F03",
+      "description": "test_f03_b03_negative_amount_local_remittance_rejected"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f03_b04_bank_rail_timeout_504_gateway_timeout",
+      "name": "test_f03_b04_bank_rail_timeout_504_gateway_timeout",
+      "tier": 2,
+      "feature": "F03",
+      "description": "test_f03_b04_bank_rail_timeout_504_gateway_timeout"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f03_b05_clearing_window_closed_delayed_dispatch",
+      "name": "test_f03_b05_clearing_window_closed_delayed_dispatch",
+      "tier": 2,
+      "feature": "F03",
+      "description": "test_f03_b05_clearing_window_closed_delayed_dispatch"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f04_b01_expired_fx_quote_rejected",
+      "name": "test_f04_b01_expired_fx_quote_rejected",
+      "tier": 2,
+      "feature": "F04",
+      "description": "test_f04_b01_expired_fx_quote_rejected"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f04_b02_insufficient_nostro_liquidity_blocked",
+      "name": "test_f04_b02_insufficient_nostro_liquidity_blocked",
+      "tier": 2,
+      "feature": "F04",
+      "description": "test_f04_b02_insufficient_nostro_liquidity_blocked"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f04_b03_unsupported_cross_border_currency_pair",
+      "name": "test_f04_b03_unsupported_cross_border_currency_pair",
+      "tier": 2,
+      "feature": "F04",
+      "description": "test_f04_b03_unsupported_cross_border_currency_pair"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f04_b04_zero_fx_rate_rejected",
+      "name": "test_f04_b04_zero_fx_rate_rejected",
+      "tier": 2,
+      "feature": "F04",
+      "description": "test_f04_b04_zero_fx_rate_rejected"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f04_b05_cross_border_embargoed_country_blocked",
+      "name": "test_f04_b05_cross_border_embargoed_country_blocked",
+      "tier": 2,
+      "feature": "F04",
+      "description": "test_f04_b05_cross_border_embargoed_country_blocked"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f05_b01_card_luhn_algorithm_check_failure",
+      "name": "test_f05_b01_card_luhn_algorithm_check_failure",
+      "tier": 2,
+      "feature": "F05",
+      "description": "test_f05_b01_card_luhn_algorithm_check_failure"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f05_b02_expired_card_payment_rejected",
+      "name": "test_f05_b02_expired_card_payment_rejected",
+      "tier": 2,
+      "feature": "F05",
+      "description": "test_f05_b02_expired_card_payment_rejected"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f05_b03_dynamic_qris_expired_payment_rejected",
+      "name": "test_f05_b03_dynamic_qris_expired_payment_rejected",
+      "tier": 2,
+      "feature": "F05",
+      "description": "test_f05_b03_dynamic_qris_expired_payment_rejected"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f05_b04_3ds_challenge_abandoned_timeout",
+      "name": "test_f05_b04_3ds_challenge_abandoned_timeout",
+      "tier": 2,
+      "feature": "F05",
+      "description": "test_f05_b04_3ds_challenge_abandoned_timeout"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f05_b05_direct_debit_exceeds_mandate_limit_rejected",
+      "name": "test_f05_b05_direct_debit_exceeds_mandate_limit_rejected",
+      "tier": 2,
+      "feature": "F05",
+      "description": "test_f05_b05_direct_debit_exceeds_mandate_limit_rejected"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f06_b01_fbo_escrow_negative_balance_prevented",
+      "name": "test_f06_b01_fbo_escrow_negative_balance_prevented",
+      "tier": 2,
+      "feature": "F06",
+      "description": "test_f06_b01_fbo_escrow_negative_balance_prevented"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f06_b02_disbursement_exceeds_funded_escrow_blocked",
+      "name": "test_f06_b02_disbursement_exceeds_funded_escrow_blocked",
+      "tier": 2,
+      "feature": "F06",
+      "description": "test_f06_b02_disbursement_exceeds_funded_escrow_blocked"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f06_b03_unauthorized_platform_fbo_withdrawal_blocked",
+      "name": "test_f06_b03_unauthorized_platform_fbo_withdrawal_blocked",
+      "tier": 2,
+      "feature": "F06",
+      "description": "test_f06_b03_unauthorized_platform_fbo_withdrawal_blocked"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f06_b04_loan_origination_expired_funding_window",
+      "name": "test_f06_b04_loan_origination_expired_funding_window",
+      "tier": 2,
+      "feature": "F06",
+      "description": "test_f06_b04_loan_origination_expired_funding_window"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f06_b05_duplicate_loan_id_origination_prevented",
+      "name": "test_f06_b05_duplicate_loan_id_origination_prevented",
+      "tier": 2,
+      "feature": "F06",
+      "description": "test_f06_b05_duplicate_loan_id_origination_prevented"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f07_b01_waterfall_zero_amount_collected_rejected",
+      "name": "test_f07_b01_waterfall_zero_amount_collected_rejected",
+      "tier": 2,
+      "feature": "F07",
+      "description": "test_f07_b01_waterfall_zero_amount_collected_rejected"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f07_b02_waterfall_delinquent_penalty_priority_deduction",
+      "name": "test_f07_b02_waterfall_delinquent_penalty_priority_deduction",
+      "tier": 2,
+      "feature": "F07",
+      "description": "test_f07_b02_waterfall_delinquent_penalty_priority_deduction"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f07_b03_waterfall_empty_investor_list_rejected",
+      "name": "test_f07_b03_waterfall_empty_investor_list_rejected",
+      "tier": 2,
+      "feature": "F07",
+      "description": "test_f07_b03_waterfall_empty_investor_list_rejected"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f07_b04_waterfall_investor_weights_not_summing_to_10000",
+      "name": "test_f07_b04_waterfall_investor_weights_not_summing_to_10000",
+      "tier": 2,
+      "feature": "F07",
+      "description": "test_f07_b04_waterfall_investor_weights_not_summing_to_10000"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f07_b05_waterfall_extreme_cent_precision_rounding",
+      "name": "test_f07_b05_waterfall_extreme_cent_precision_rounding",
+      "tier": 2,
+      "feature": "F07",
+      "description": "test_f07_b05_waterfall_extreme_cent_precision_rounding"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f08_b01_unsupported_rail_adapter_lookup_error",
+      "name": "test_f08_b01_unsupported_rail_adapter_lookup_error",
+      "tier": 2,
+      "feature": "F08",
+      "description": "test_f08_b01_unsupported_rail_adapter_lookup_error"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f08_b02_rail_adapter_timeout_graceful_handling",
+      "name": "test_f08_b02_rail_adapter_timeout_graceful_handling",
+      "tier": 2,
+      "feature": "F08",
+      "description": "test_f08_b02_rail_adapter_timeout_graceful_handling"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f08_b03_unmapped_downstream_bank_error_fallback",
+      "name": "test_f08_b03_unmapped_downstream_bank_error_fallback",
+      "tier": 2,
+      "feature": "F08",
+      "description": "test_f08_b03_unmapped_downstream_bank_error_fallback"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f08_b04_duplicate_adapter_registration_error",
+      "name": "test_f08_b04_duplicate_adapter_registration_error",
+      "tier": 2,
+      "feature": "F08",
+      "description": "test_f08_b04_duplicate_adapter_registration_error"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f08_b05_malformed_adapter_payload_normalization",
+      "name": "test_f08_b05_malformed_adapter_payload_normalization",
+      "tier": 2,
+      "feature": "F08",
+      "description": "test_f08_b05_malformed_adapter_payload_normalization"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f09_b01_unbalanced_journal_debits_ne_credits_rejected",
+      "name": "test_f09_b01_unbalanced_journal_debits_ne_credits_rejected",
+      "tier": 2,
+      "feature": "F09",
+      "description": "test_f09_b01_unbalanced_journal_debits_ne_credits_rejected"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f09_b02_negative_leg_amount_rejected",
+      "name": "test_f09_b02_negative_leg_amount_rejected",
+      "tier": 2,
+      "feature": "F09",
+      "description": "test_f09_b02_negative_leg_amount_rejected"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f09_b03_zero_leg_amount_rejected",
+      "name": "test_f09_b03_zero_leg_amount_rejected",
+      "tier": 2,
+      "feature": "F09",
+      "description": "test_f09_b03_zero_leg_amount_rejected"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f09_b04_single_leg_journal_rejected",
+      "name": "test_f09_b04_single_leg_journal_rejected",
+      "tier": 2,
+      "feature": "F09",
+      "description": "test_f09_b04_single_leg_journal_rejected"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f09_b05_nonexistent_account_in_journal_rejected",
+      "name": "test_f09_b05_nonexistent_account_in_journal_rejected",
+      "tier": 2,
+      "feature": "F09",
+      "description": "test_f09_b05_nonexistent_account_in_journal_rejected"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f10_b01_currency_mismatch_in_journal_leg_rejected",
+      "name": "test_f10_b01_currency_mismatch_in_journal_leg_rejected",
+      "tier": 2,
+      "feature": "F10",
+      "description": "test_f10_b01_currency_mismatch_in_journal_leg_rejected"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f10_b02_holding_more_than_available_balance_rejected",
+      "name": "test_f10_b02_holding_more_than_available_balance_rejected",
+      "tier": 2,
+      "feature": "F10",
+      "description": "test_f10_b02_holding_more_than_available_balance_rejected"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f10_b03_release_nonexistent_hold_rejected",
+      "name": "test_f10_b03_release_nonexistent_hold_rejected",
+      "tier": 2,
+      "feature": "F10",
+      "description": "test_f10_b03_release_nonexistent_hold_rejected"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f10_b04_commit_nonexistent_hold_rejected",
+      "name": "test_f10_b04_commit_nonexistent_hold_rejected",
+      "tier": 2,
+      "feature": "F10",
+      "description": "test_f10_b04_commit_nonexistent_hold_rejected"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f10_b05_duplicate_account_id_creation_rejected",
+      "name": "test_f10_b05_duplicate_account_id_creation_rejected",
+      "tier": 2,
+      "feature": "F10",
+      "description": "test_f10_b05_duplicate_account_id_creation_rejected"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f11_b01_all_rails_down_circuit_breaker_trip",
+      "name": "test_f11_b01_all_rails_down_circuit_breaker_trip",
+      "tier": 2,
+      "feature": "F11",
+      "description": "test_f11_b01_all_rails_down_circuit_breaker_trip"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f11_b02_empty_settlement_batch_handling",
+      "name": "test_f11_b02_empty_settlement_batch_handling",
+      "tier": 2,
+      "feature": "F11",
+      "description": "test_f11_b02_empty_settlement_batch_handling"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f11_b03_negative_net_settlement_guard",
+      "name": "test_f11_b03_negative_net_settlement_guard",
+      "tier": 2,
+      "feature": "F11",
+      "description": "test_f11_b03_negative_net_settlement_guard"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f11_b04_timestamp_drift_at_cutoff_boundary",
+      "name": "test_f11_b04_timestamp_drift_at_cutoff_boundary",
+      "tier": 2,
+      "feature": "F11",
+      "description": "test_f11_b04_timestamp_drift_at_cutoff_boundary"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f11_b05_routing_rule_priority_conflict_resolution",
+      "name": "test_f11_b05_routing_rule_priority_conflict_resolution",
+      "tier": 2,
+      "feature": "F11",
+      "description": "test_f11_b05_routing_rule_priority_conflict_resolution"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f12_b01_exact_ofac_sdn_sanctions_hit_freeze",
+      "name": "test_f12_b01_exact_ofac_sdn_sanctions_hit_freeze",
+      "tier": 2,
+      "feature": "F12",
+      "description": "test_f12_b01_exact_ofac_sdn_sanctions_hit_freeze"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f12_b02_fuzzy_ofac_sdn_sanctions_hit_freeze",
+      "name": "test_f12_b02_fuzzy_ofac_sdn_sanctions_hit_freeze",
+      "tier": 2,
+      "feature": "F12",
+      "description": "test_f12_b02_fuzzy_ofac_sdn_sanctions_hit_freeze"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f12_b03_embargoed_country_screening_hit",
+      "name": "test_f12_b03_embargoed_country_screening_hit",
+      "tier": 2,
+      "feature": "F12",
+      "description": "test_f12_b03_embargoed_country_screening_hit"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f12_b04_high_fraud_score_challenge_trigger",
+      "name": "test_f12_b04_high_fraud_score_challenge_trigger",
+      "tier": 2,
+      "feature": "F12",
+      "description": "test_f12_b04_high_fraud_score_challenge_trigger"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f12_b05_velocity_limit_exceeded_blocking",
+      "name": "test_f12_b05_velocity_limit_exceeded_blocking",
+      "tier": 2,
+      "feature": "F12",
+      "description": "test_f12_b05_velocity_limit_exceeded_blocking"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f13_b01_sql_check_constraint_negative_amount_violation",
+      "name": "test_f13_b01_sql_check_constraint_negative_amount_violation",
+      "tier": 2,
+      "feature": "F13",
+      "description": "test_f13_b01_sql_check_constraint_negative_amount_violation"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f13_b02_sql_foreign_key_violation_nonexistent_account",
+      "name": "test_f13_b02_sql_foreign_key_violation_nonexistent_account",
+      "tier": 2,
+      "feature": "F13",
+      "description": "test_f13_b02_sql_foreign_key_violation_nonexistent_account"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f13_b03_sql_update_on_immutable_journal_blocked",
+      "name": "test_f13_b03_sql_update_on_immutable_journal_blocked",
+      "tier": 2,
+      "feature": "F13",
+      "description": "test_f13_b03_sql_update_on_immutable_journal_blocked"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f13_b04_sql_delete_on_immutable_journal_blocked",
+      "name": "test_f13_b04_sql_delete_on_immutable_journal_blocked",
+      "tier": 2,
+      "feature": "F13",
+      "description": "test_f13_b04_sql_delete_on_immutable_journal_blocked"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f13_b05_sql_not_null_column_omission_failure",
+      "name": "test_f13_b05_sql_not_null_column_omission_failure",
+      "tier": 2,
+      "feature": "F13",
+      "description": "test_f13_b05_sql_not_null_column_omission_failure"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f14_b01_openapi_missing_required_field_rejected",
+      "name": "test_f14_b01_openapi_missing_required_field_rejected",
+      "tier": 2,
+      "feature": "F14",
+      "description": "test_f14_b01_openapi_missing_required_field_rejected"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f14_b02_openapi_invalid_currency_code_rejected",
+      "name": "test_f14_b02_openapi_invalid_currency_code_rejected",
+      "tier": 2,
+      "feature": "F14",
+      "description": "test_f14_b02_openapi_invalid_currency_code_rejected"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f14_b03_openapi_negative_integer_minor_units_rejected",
+      "name": "test_f14_b03_openapi_negative_integer_minor_units_rejected",
+      "tier": 2,
+      "feature": "F14",
+      "description": "test_f14_b03_openapi_negative_integer_minor_units_rejected"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f14_b04_grpc_deadline_exceeded_handling",
+      "name": "test_f14_b04_grpc_deadline_exceeded_handling",
+      "tier": 2,
+      "feature": "F14",
+      "description": "test_f14_b04_grpc_deadline_exceeded_handling"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f14_b05_malformed_uuid_string_rejected",
+      "name": "test_f14_b05_malformed_uuid_string_rejected",
+      "tier": 2,
+      "feature": "F14",
+      "description": "test_f14_b05_malformed_uuid_string_rejected"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f15_b01_single_az_catastrophic_partition_failover",
+      "name": "test_f15_b01_single_az_catastrophic_partition_failover",
+      "tier": 2,
+      "feature": "F15",
+      "description": "test_f15_b01_single_az_catastrophic_partition_failover"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f15_b02_database_primary_crash_leader_election",
+      "name": "test_f15_b02_database_primary_crash_leader_election",
+      "tier": 2,
+      "feature": "F15",
+      "description": "test_f15_b02_database_primary_crash_leader_election"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f15_b03_split_brain_prevention_quorum_loss",
+      "name": "test_f15_b03_split_brain_prevention_quorum_loss",
+      "tier": 2,
+      "feature": "F15",
+      "description": "test_f15_b03_split_brain_prevention_quorum_loss"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f15_b04_cross_region_sync_lag_threshold_alert",
+      "name": "test_f15_b04_cross_region_sync_lag_threshold_alert",
+      "tier": 2,
+      "feature": "F15",
+      "description": "test_f15_b04_cross_region_sync_lag_threshold_alert"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f15_b05_circuit_breaker_half_open_probe_failure",
+      "name": "test_f15_b05_circuit_breaker_half_open_probe_failure",
+      "tier": 2,
+      "feature": "F15",
+      "description": "test_f15_b05_circuit_breaker_half_open_probe_failure"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f16_b01_ring_buffer_backpressure_on_saturation",
+      "name": "test_f16_b01_ring_buffer_backpressure_on_saturation",
+      "tier": 2,
+      "feature": "F16",
+      "description": "test_f16_b01_ring_buffer_backpressure_on_saturation"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f16_b02_single_account_hotspot_contention_handling",
+      "name": "test_f16_b02_single_account_hotspot_contention_handling",
+      "tier": 2,
+      "feature": "F16",
+      "description": "test_f16_b02_single_account_hotspot_contention_handling"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f16_b03_cache_miss_fallback_to_ledger_reconstruction",
+      "name": "test_f16_b03_cache_miss_fallback_to_ledger_reconstruction",
+      "tier": 2,
+      "feature": "F16",
+      "description": "test_f16_b03_cache_miss_fallback_to_ledger_reconstruction"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f16_b04_wal_disk_full_emergency_rejection",
+      "name": "test_f16_b04_wal_disk_full_emergency_rejection",
+      "tier": 2,
+      "feature": "F16",
+      "description": "test_f16_b04_wal_disk_full_emergency_rejection"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f16_b05_out_of_order_actor_sequence_rejection",
+      "name": "test_f16_b05_out_of_order_actor_sequence_rejection",
+      "tier": 2,
+      "feature": "F16",
+      "description": "test_f16_b05_out_of_order_actor_sequence_rejection"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f17_b01_concurrent_duplicate_idempotency_key_409",
+      "name": "test_f17_b01_concurrent_duplicate_idempotency_key_409",
+      "tier": 2,
+      "feature": "F17",
+      "description": "test_f17_b01_concurrent_duplicate_idempotency_key_409"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f17_b02_payload_mismatch_same_key_422_unprocessable",
+      "name": "test_f17_b02_payload_mismatch_same_key_422_unprocessable",
+      "tier": 2,
+      "feature": "F17",
+      "description": "test_f17_b02_payload_mismatch_same_key_422_unprocessable"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f17_b03_expired_idempotency_key_reuse_allowed",
+      "name": "test_f17_b03_expired_idempotency_key_reuse_allowed",
+      "tier": 2,
+      "feature": "F17",
+      "description": "test_f17_b03_expired_idempotency_key_reuse_allowed"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f17_b04_idempotency_server_crash_in_flight_recovery",
+      "name": "test_f17_b04_idempotency_server_crash_in_flight_recovery",
+      "tier": 2,
+      "feature": "F17",
+      "description": "test_f17_b04_idempotency_server_crash_in_flight_recovery"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f17_b05_empty_idempotency_key_header_rejected",
+      "name": "test_f17_b05_empty_idempotency_key_header_rejected",
+      "tier": 2,
+      "feature": "F17",
+      "description": "test_f17_b05_empty_idempotency_key_header_rejected"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f18_b01_saga_downstream_failure_triggers_compensation",
+      "name": "test_f18_b01_saga_downstream_failure_triggers_compensation",
+      "tier": 2,
+      "feature": "F18",
+      "description": "test_f18_b01_saga_downstream_failure_triggers_compensation"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f18_b02_partial_settlement_failure_reversal",
+      "name": "test_f18_b02_partial_settlement_failure_reversal",
+      "tier": 2,
+      "feature": "F18",
+      "description": "test_f18_b02_partial_settlement_failure_reversal"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f18_b03_outbox_message_deduplication_on_retry",
+      "name": "test_f18_b03_outbox_message_deduplication_on_retry",
+      "tier": 2,
+      "feature": "F18",
+      "description": "test_f18_b03_outbox_message_deduplication_on_retry"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f18_b04_unresponsive_saga_participant_timeout",
+      "name": "test_f18_b04_unresponsive_saga_participant_timeout",
+      "tier": 2,
+      "feature": "F18",
+      "description": "test_f18_b04_unresponsive_saga_participant_timeout"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f18_b05_saga_compensation_failure_escalation",
+      "name": "test_f18_b05_saga_compensation_failure_escalation",
+      "tier": 2,
+      "feature": "F18",
+      "description": "test_f18_b05_saga_compensation_failure_escalation"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f19_b01_recon_unmatched_internal_break_detected",
+      "name": "test_f19_b01_recon_unmatched_internal_break_detected",
+      "tier": 2,
+      "feature": "F19",
+      "description": "test_f19_b01_recon_unmatched_internal_break_detected"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f19_b02_recon_unmatched_external_break_detected",
+      "name": "test_f19_b02_recon_unmatched_external_break_detected",
+      "tier": 2,
+      "feature": "F19",
+      "description": "test_f19_b02_recon_unmatched_external_break_detected"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f19_b03_recon_amount_discrepancy_break_detected",
+      "name": "test_f19_b03_recon_amount_discrepancy_break_detected",
+      "tier": 2,
+      "feature": "F19",
+      "description": "test_f19_b03_recon_amount_discrepancy_break_detected"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f19_b04_corrupted_camt053_xml_rejection",
+      "name": "test_f19_b04_corrupted_camt053_xml_rejection",
+      "tier": 2,
+      "feature": "F19",
+      "description": "test_f19_b04_corrupted_camt053_xml_rejection"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f19_b05_recon_statement_duplicate_hash_ignored",
+      "name": "test_f19_b05_recon_statement_duplicate_hash_ignored",
+      "tier": 2,
+      "feature": "F19",
+      "description": "test_f19_b05_recon_statement_duplicate_hash_ignored"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f20_b01_budget_overrun_finops_alert_threshold",
+      "name": "test_f20_b01_budget_overrun_finops_alert_threshold",
+      "tier": 2,
+      "feature": "F20",
+      "description": "test_f20_b01_budget_overrun_finops_alert_threshold"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f20_b02_nat_gateway_unintended_egress_detection",
+      "name": "test_f20_b02_nat_gateway_unintended_egress_detection",
+      "tier": 2,
+      "feature": "F20",
+      "description": "test_f20_b02_nat_gateway_unintended_egress_detection"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f20_b03_stale_ebs_volume_retention_alert",
+      "name": "test_f20_b03_stale_ebs_volume_retention_alert",
+      "tier": 2,
+      "feature": "F20",
+      "description": "test_f20_b03_stale_ebs_volume_retention_alert"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f20_b04_glacier_instant_retrieval_cost_guardrail",
+      "name": "test_f20_b04_glacier_instant_retrieval_cost_guardrail",
+      "tier": 2,
+      "feature": "F20",
+      "description": "test_f20_b04_glacier_instant_retrieval_cost_guardrail"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f20_b05_oversized_pod_cpu_limits_finops_violation",
+      "name": "test_f20_b05_oversized_pod_cpu_limits_finops_violation",
+      "tier": 2,
+      "feature": "F20",
+      "description": "test_f20_b05_oversized_pod_cpu_limits_finops_violation"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f21_b01_missing_required_architecture_directory_detected",
+      "name": "test_f21_b01_missing_required_architecture_directory_detected",
+      "tier": 2,
+      "feature": "F21",
+      "description": "test_f21_b01_missing_required_architecture_directory_detected"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f21_b02_uncommitted_env_secrets_detection",
+      "name": "test_f21_b02_uncommitted_env_secrets_detection",
+      "tier": 2,
+      "feature": "F21",
+      "description": "test_f21_b02_uncommitted_env_secrets_detection"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f21_b03_non_conforming_markdown_file_name_detected",
+      "name": "test_f21_b03_non_conforming_markdown_file_name_detected",
+      "tier": 2,
+      "feature": "F21",
+      "description": "test_f21_b03_non_conforming_markdown_file_name_detected"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f21_b04_broken_relative_hyperlink_detected",
+      "name": "test_f21_b04_broken_relative_hyperlink_detected",
+      "tier": 2,
+      "feature": "F21",
+      "description": "test_f21_b04_broken_relative_hyperlink_detected"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f21_b05_oversized_binary_file_in_repo_detected",
+      "name": "test_f21_b05_oversized_binary_file_in_repo_detected",
+      "tier": 2,
+      "feature": "F21",
+      "description": "test_f21_b05_oversized_binary_file_in_repo_detected"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f22_b01_github_push_rejected_non_fast_forward",
+      "name": "test_f22_b01_github_push_rejected_non_fast_forward",
+      "tier": 2,
+      "feature": "F22",
+      "description": "test_f22_b01_github_push_rejected_non_fast_forward"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f22_b02_github_auth_token_revoked_failure",
+      "name": "test_f22_b02_github_auth_token_revoked_failure",
+      "tier": 2,
+      "feature": "F22",
+      "description": "test_f22_b02_github_auth_token_revoked_failure"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f22_b03_github_rate_limit_primary_secondary_threshold",
+      "name": "test_f22_b03_github_rate_limit_primary_secondary_threshold",
+      "tier": 2,
+      "feature": "F22",
+      "description": "test_f22_b03_github_rate_limit_primary_secondary_threshold"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f22_b04_missing_remote_origin_error",
+      "name": "test_f22_b04_missing_remote_origin_error",
+      "tier": 2,
+      "feature": "F22",
+      "description": "test_f22_b04_missing_remote_origin_error"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f22_b05_invalid_branch_protection_bypass_attempt",
+      "name": "test_f22_b05_invalid_branch_protection_bypass_attempt",
+      "tier": 2,
+      "feature": "F22",
+      "description": "test_f22_b05_invalid_branch_protection_bypass_attempt"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f23_b01_markdownlint_syntax_violation_caught",
+      "name": "test_f23_b01_markdownlint_syntax_violation_caught",
+      "tier": 2,
+      "feature": "F23",
+      "description": "test_f23_b01_markdownlint_syntax_violation_caught"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f23_b02_invalid_openapi_yaml_schema_caught",
+      "name": "test_f23_b02_invalid_openapi_yaml_schema_caught",
+      "tier": 2,
+      "feature": "F23",
+      "description": "test_f23_b02_invalid_openapi_yaml_schema_caught"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f23_b03_invalid_ddl_sql_syntax_caught",
+      "name": "test_f23_b03_invalid_ddl_sql_syntax_caught",
+      "tier": 2,
+      "feature": "F23",
+      "description": "test_f23_b03_invalid_ddl_sql_syntax_caught"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f23_b04_ci_step_failure_halts_pipeline",
+      "name": "test_f23_b04_ci_step_failure_halts_pipeline",
+      "tier": 2,
+      "feature": "F23",
+      "description": "test_f23_b04_ci_step_failure_halts_pipeline"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f23_b05_malformed_protobuf_syntax_caught",
+      "name": "test_f23_b05_malformed_protobuf_syntax_caught",
+      "tier": 2,
+      "feature": "F23",
+      "description": "test_f23_b05_malformed_protobuf_syntax_caught"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f24_b01_rubric_dimension_score_below_85_rejection",
+      "name": "test_f24_b01_rubric_dimension_score_below_85_rejection",
+      "tier": 2,
+      "feature": "F24",
+      "description": "test_f24_b01_rubric_dimension_score_below_85_rejection"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f24_b02_pci_dss_plaintext_pan_storage_detection",
+      "name": "test_f24_b02_pci_dss_plaintext_pan_storage_detection",
+      "tier": 2,
+      "feature": "F24",
+      "description": "test_f24_b02_pci_dss_plaintext_pan_storage_detection"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f24_b03_snap_bi_signature_missing_error",
+      "name": "test_f24_b03_snap_bi_signature_missing_error",
+      "tier": 2,
+      "feature": "F24",
+      "description": "test_f24_b03_snap_bi_signature_missing_error"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f24_b04_incomplete_test_tier_coverage_detection",
+      "name": "test_f24_b04_incomplete_test_tier_coverage_detection",
+      "tier": 2,
+      "feature": "F24",
+      "description": "test_f24_b04_incomplete_test_tier_coverage_detection"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f24_b05_non_zero_accounting_delta_rejection",
+      "name": "test_f24_b05_non_zero_accounting_delta_rejection",
+      "tier": 2,
+      "feature": "F24",
+      "description": "test_f24_b05_non_zero_accounting_delta_rejection"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f25_b01_tampered_journal_hash_detected",
+      "name": "test_f25_b01_tampered_journal_hash_detected",
+      "tier": 2,
+      "feature": "F25",
+      "description": "test_f25_b01_tampered_journal_hash_detected"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f25_b02_concurrent_double_spend_race_condition_blocked",
+      "name": "test_f25_b02_concurrent_double_spend_race_condition_blocked",
+      "tier": 2,
+      "feature": "F25",
+      "description": "test_f25_b02_concurrent_double_spend_race_condition_blocked"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f25_b03_integer_overflow_64bit_boundary_guarded",
+      "name": "test_f25_b03_integer_overflow_64bit_boundary_guarded",
+      "tier": 2,
+      "feature": "F25",
+      "description": "test_f25_b03_integer_overflow_64bit_boundary_guarded"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f25_b04_clock_skew_beyond_tolerance_rejected",
+      "name": "test_f25_b04_clock_skew_beyond_tolerance_rejected",
+      "tier": 2,
+      "feature": "F25",
+      "description": "test_f25_b04_clock_skew_beyond_tolerance_rejected"
+    },
+    {
+      "id": "tests.e2e.test_tier2_boundaries.TestTier2Boundaries.test_f25_b05_malformed_utf8_control_character_stripped",
+      "name": "test_f25_b05_malformed_utf8_control_character_stripped",
+      "tier": 2,
+      "feature": "F25",
+      "description": "test_f25_b05_malformed_utf8_control_character_stripped"
+    },
+    {
+      "id": "tests.e2e.test_tier3_combinations.TestTier3Combinations.test_t3_01_cross_border_payout_guaranteed_fx_sanctions_hit",
+      "name": "test_t3_01_cross_border_payout_guaranteed_fx_sanctions_hit",
+      "tier": 3,
+      "feature": null,
+      "description": "test_t3_01_cross_border_payout_guaranteed_fx_sanctions_hit"
+    },
+    {
+      "id": "tests.e2e.test_tier3_combinations.TestTier3Combinations.test_t3_02_payin_card_3ds_challenge_idempotent_resubmission",
+      "name": "test_t3_02_payin_card_3ds_challenge_idempotent_resubmission",
+      "tier": 3,
+      "feature": null,
+      "description": "test_t3_02_payin_card_3ds_challenge_idempotent_resubmission"
+    },
+    {
+      "id": "tests.e2e.test_tier3_combinations.TestTier3Combinations.test_t3_03_p2p_escrow_disbursal_saga_partial_failure_compensation",
+      "name": "test_t3_03_p2p_escrow_disbursal_saga_partial_failure_compensation",
+      "tier": 3,
+      "feature": null,
+      "description": "test_t3_03_p2p_escrow_disbursal_saga_partial_failure_compensation"
+    },
+    {
+      "id": "tests.e2e.test_tier3_combinations.TestTier3Combinations.test_t3_04_instant_remittance_smart_routing_fallback",
+      "name": "test_t3_04_instant_remittance_smart_routing_fallback",
+      "tier": 3,
+      "feature": null,
+      "description": "test_t3_04_instant_remittance_smart_routing_fallback"
+    },
+    {
+      "id": "tests.e2e.test_tier3_combinations.TestTier3Combinations.test_t3_05_multi_currency_double_entry_ledger_nostro_zero_sum",
+      "name": "test_t3_05_multi_currency_double_entry_ledger_nostro_zero_sum",
+      "tier": 3,
+      "feature": null,
+      "description": "test_t3_05_multi_currency_double_entry_ledger_nostro_zero_sum"
+    },
+    {
+      "id": "tests.e2e.test_tier3_combinations.TestTier3Combinations.test_t3_06_high_frequency_acquiring_lmax_actor_ring_buffer_backpressure",
+      "name": "test_t3_06_high_frequency_acquiring_lmax_actor_ring_buffer_backpressure",
+      "tier": 3,
+      "feature": null,
+      "description": "test_t3_06_high_frequency_acquiring_lmax_actor_ring_buffer_backpressure"
+    },
+    {
+      "id": "tests.e2e.test_tier3_combinations.TestTier3Combinations.test_t3_07_automated_3way_recon_camt053_unmatched_break_escalation",
+      "name": "test_t3_07_automated_3way_recon_camt053_unmatched_break_escalation",
+      "tier": 3,
+      "feature": null,
+      "description": "test_t3_07_automated_3way_recon_camt053_unmatched_break_escalation"
+    },
+    {
+      "id": "tests.e2e.test_tier3_combinations.TestTier3Combinations.test_t3_08_p2p_loan_repayment_waterfall_rounding_cent_attribution",
+      "name": "test_t3_08_p2p_loan_repayment_waterfall_rounding_cent_attribution",
+      "tier": 3,
+      "feature": null,
+      "description": "test_t3_08_p2p_loan_repayment_waterfall_rounding_cent_attribution"
+    },
+    {
+      "id": "tests.e2e.test_tier3_combinations.TestTier3Combinations.test_t3_09_distributed_idempotency_key_expiry_in_flight_timeout",
+      "name": "test_t3_09_distributed_idempotency_key_expiry_in_flight_timeout",
+      "tier": 3,
+      "feature": null,
+      "description": "test_t3_09_distributed_idempotency_key_expiry_in_flight_timeout"
+    },
+    {
+      "id": "tests.e2e.test_tier3_combinations.TestTier3Combinations.test_t3_10_multi_az_partition_saga_outbox_cdc_recovery",
+      "name": "test_t3_10_multi_az_partition_saga_outbox_cdc_recovery",
+      "tier": 3,
+      "feature": null,
+      "description": "test_t3_10_multi_az_partition_saga_outbox_cdc_recovery"
+    },
+    {
+      "id": "tests.e2e.test_tier3_combinations.TestTier3Combinations.test_t3_11_cross_border_nostro_liquidity_exhaustion_auto_rebalancing",
+      "name": "test_t3_11_cross_border_nostro_liquidity_exhaustion_auto_rebalancing",
+      "tier": 3,
+      "feature": null,
+      "description": "test_t3_11_cross_border_nostro_liquidity_exhaustion_auto_rebalancing"
+    },
+    {
+      "id": "tests.e2e.test_tier3_combinations.TestTier3Combinations.test_t3_12_dynamic_qris_expiry_timer_inbound_clearing_rejection",
+      "name": "test_t3_12_dynamic_qris_expiry_timer_inbound_clearing_rejection",
+      "tier": 3,
+      "feature": null,
+      "description": "test_t3_12_dynamic_qris_expiry_timer_inbound_clearing_rejection"
+    },
+    {
+      "id": "tests.e2e.test_tier3_combinations.TestTier3Combinations.test_t3_13_direct_debit_mandate_revocation_batch_exclusion",
+      "name": "test_t3_13_direct_debit_mandate_revocation_batch_exclusion",
+      "tier": 3,
+      "feature": null,
+      "description": "test_t3_13_direct_debit_mandate_revocation_batch_exclusion"
+    },
+    {
+      "id": "tests.e2e.test_tier3_combinations.TestTier3Combinations.test_t3_14_delinquent_loan_overdue_penalty_calculation",
+      "name": "test_t3_14_delinquent_loan_overdue_penalty_calculation",
+      "tier": 3,
+      "feature": null,
+      "description": "test_t3_14_delinquent_loan_overdue_penalty_calculation"
+    },
+    {
+      "id": "tests.e2e.test_tier3_combinations.TestTier3Combinations.test_t3_15_extensibility_spi_hot_swap_adapter_zero_downtime",
+      "name": "test_t3_15_extensibility_spi_hot_swap_adapter_zero_downtime",
+      "tier": 3,
+      "feature": null,
+      "description": "test_t3_15_extensibility_spi_hot_swap_adapter_zero_downtime"
+    },
+    {
+      "id": "tests.e2e.test_tier3_combinations.TestTier3Combinations.test_t3_16_postgresql_check_constraint_enforcement",
+      "name": "test_t3_16_postgresql_check_constraint_enforcement",
+      "tier": 3,
+      "feature": null,
+      "description": "test_t3_16_postgresql_check_constraint_enforcement"
+    },
+    {
+      "id": "tests.e2e.test_tier3_combinations.TestTier3Combinations.test_t3_17_grpc_internal_rpc_timeout_circuit_breaker",
+      "name": "test_t3_17_grpc_internal_rpc_timeout_circuit_breaker",
+      "tier": 3,
+      "feature": null,
+      "description": "test_t3_17_grpc_internal_rpc_timeout_circuit_breaker"
+    },
+    {
+      "id": "tests.e2e.test_tier3_combinations.TestTier3Combinations.test_t3_18_eks_karpenter_scale_out_during_peak_batch",
+      "name": "test_t3_18_eks_karpenter_scale_out_during_peak_batch",
+      "tier": 3,
+      "feature": null,
+      "description": "test_t3_18_eks_karpenter_scale_out_during_peak_batch"
+    },
+    {
+      "id": "tests.e2e.test_tier3_combinations.TestTier3Combinations.test_t3_19_webhook_delivery_exponential_backoff",
+      "name": "test_t3_19_webhook_delivery_exponential_backoff",
+      "tier": 3,
+      "feature": null,
+      "description": "test_t3_19_webhook_delivery_exponential_backoff"
+    },
+    {
+      "id": "tests.e2e.test_tier3_combinations.TestTier3Combinations.test_t3_20_cloudevent_sequence_monotonicity_detection",
+      "name": "test_t3_20_cloudevent_sequence_monotonicity_detection",
+      "tier": 3,
+      "feature": null,
+      "description": "test_t3_20_cloudevent_sequence_monotonicity_detection"
+    },
+    {
+      "id": "tests.e2e.test_tier3_combinations.TestTier3Combinations.test_t3_21_double_entry_multi_leg_split_settlement",
+      "name": "test_t3_21_double_entry_multi_leg_split_settlement",
+      "tier": 3,
+      "feature": null,
+      "description": "test_t3_21_double_entry_multi_leg_split_settlement"
+    },
+    {
+      "id": "tests.e2e.test_tier3_combinations.TestTier3Combinations.test_t3_22_high_precision_currency_ledger_transfer",
+      "name": "test_t3_22_high_precision_currency_ledger_transfer",
+      "tier": 3,
+      "feature": null,
+      "description": "test_t3_22_high_precision_currency_ledger_transfer"
+    },
+    {
+      "id": "tests.e2e.test_tier3_combinations.TestTier3Combinations.test_t3_23_finops_vpc_endpoint_route_table_bypass_detection",
+      "name": "test_t3_23_finops_vpc_endpoint_route_table_bypass_detection",
+      "tier": 3,
+      "feature": null,
+      "description": "test_t3_23_finops_vpc_endpoint_route_table_bypass_detection"
+    },
+    {
+      "id": "tests.e2e.test_tier3_combinations.TestTier3Combinations.test_t3_24_zero_spof_route53_arc_routing_control",
+      "name": "test_t3_24_zero_spof_route53_arc_routing_control",
+      "tier": 3,
+      "feature": null,
+      "description": "test_t3_24_zero_spof_route53_arc_routing_control"
+    },
+    {
+      "id": "tests.e2e.test_tier3_combinations.TestTier3Combinations.test_t3_25_pci_dss_cardholder_data_masking",
+      "name": "test_t3_25_pci_dss_cardholder_data_masking",
+      "tier": 3,
+      "feature": null,
+      "description": "test_t3_25_pci_dss_cardholder_data_masking"
+    },
+    {
+      "id": "tests.e2e.test_tier4_real_world.TestTier4RealWorld.test_scenario_4_1_merchant_checkout_settlement_batching",
+      "name": "test_scenario_4_1_merchant_checkout_settlement_batching",
+      "tier": 4,
+      "feature": null,
+      "description": "Full lifecycle:"
+    },
+    {
+      "id": "tests.e2e.test_tier4_real_world.TestTier4RealWorld.test_scenario_4_2_p2p_lending_full_lifecycle",
+      "name": "test_scenario_4_2_p2p_lending_full_lifecycle",
+      "tier": 4,
+      "feature": null,
+      "description": "Full lifecycle:"
+    },
+    {
+      "id": "tests.e2e.test_tier4_real_world.TestTier4RealWorld.test_scenario_4_3_cross_border_mass_payout_with_fx_and_sanctions",
+      "name": "test_scenario_4_3_cross_border_mass_payout_with_fx_and_sanctions",
+      "tier": 4,
+      "feature": null,
+      "description": "Full lifecycle:"
+    },
+    {
+      "id": "tests.e2e.test_tier4_real_world.TestTier4RealWorld.test_scenario_4_4_multi_az_failover_concurrency",
+      "name": "test_scenario_4_4_multi_az_failover_concurrency",
+      "tier": 4,
+      "feature": null,
+      "description": "Full lifecycle:"
+    }
+  ]
+}

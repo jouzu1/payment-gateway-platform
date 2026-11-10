@@ -1,0 +1,986 @@
+openapi: 3.1.0
+info:
+  title: Enterprise Payment Gateway Platform API
+  version: 1.0.0
+  description: >
+    Tier-1 Real-Time Payment Gateway Platform specification providing unified APIs
+    for Card & Alternative Payins, Domestic Instant Remittance, Cross-Border Payouts,
+    P2P Lending FBO Escrow, and Double-Entry Ledger operations.
+servers:
+  - url: https://api.gateway.platform.internal/v1
+    description: Production Gateway Cluster
+  - url: https://sandbox.api.gateway.platform.internal/v1
+    description: Sandbox Sandbox Environment
+security:
+  - BearerAuth: []
+
+paths:
+  /v1/payment_intents:
+    post:
+      summary: Create a PaymentIntent
+      description: Initiates a payment collection session with cryptographic idempotency locking.
+      operationId: createPaymentIntent
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePaymentIntentRequest'
+      responses:
+        '201':
+          description: PaymentIntent successfully initialized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentIntent'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '409':
+          $ref: '#/components/responses/IdempotencyConflictError'
+    get:
+      summary: List PaymentIntents
+      description: Retrieve paginated payment intents for the authenticated merchant.
+      operationId: listPaymentIntents
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/StartingAfter'
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/PaymentIntentStatus'
+      responses:
+        '200':
+          description: Paginated list of PaymentIntents.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    example: list
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PaymentIntent'
+                  has_more:
+                    type: boolean
+
+  /v1/payment_intents/{id}:
+    get:
+      summary: Retrieve a PaymentIntent
+      operationId: getPaymentIntent
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: PaymentIntent details.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentIntent'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /v1/payment_intents/{id}/confirm:
+    post:
+      summary: Confirm a PaymentIntent
+      description: Confirms payment method details, executes 3DS2 or redirects, and attempts payment authorization.
+      operationId: confirmPaymentIntent
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfirmPaymentIntentRequest'
+      responses:
+        '200':
+          description: PaymentIntent confirmation processed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentIntent'
+        '402':
+          $ref: '#/components/responses/PaymentDeclinedError'
+
+  /v1/payment_intents/{id}/capture:
+    post:
+      summary: Capture a PaymentIntent
+      description: Finalizes and settles an authorized two-message payment transaction.
+      operationId: capturePaymentIntent
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                amount_to_capture:
+                  type: integer
+                  description: Optional partial capture amount in minor units.
+      responses:
+        '200':
+          description: Payment successfully captured.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentIntent'
+
+  /v1/payment_intents/{id}/cancel:
+    post:
+      summary: Cancel a PaymentIntent
+      operationId: cancelPaymentIntent
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: PaymentIntent cancelled.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentIntent'
+
+  /v1/refunds:
+    post:
+      summary: Create a Refund
+      operationId: createRefund
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateRefundRequest'
+      responses:
+        '201':
+          description: Refund accepted and dispatched.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Refund'
+
+  /v1/payouts:
+    post:
+      summary: Dispatch a Payout Order
+      description: Initiates an instant domestic remittance or cross-border payment instruction.
+      operationId: createPayoutOrder
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePayoutOrderRequest'
+      responses:
+        '201':
+          description: Payout order created and routed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PayoutOrder'
+        '403':
+          description: Sanctions screening failed or recipient blocked.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/payouts/{id}:
+    get:
+      summary: Retrieve Payout Status
+      operationId: getPayoutOrder
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Payout order details.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PayoutOrder'
+
+  /v1/payouts/validate-beneficiary:
+    post:
+      summary: Probe and Validate Beneficiary Account
+      description: Executes real-time domestic rail account inquiry to verify beneficiary account ownership.
+      operationId: validateBeneficiary
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ValidateBeneficiaryRequest'
+      responses:
+        '200':
+          description: Beneficiary probe completed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BeneficiaryValidationResult'
+
+  /v1/payouts/quotes:
+    post:
+      summary: Lock Guaranteed FX Quote
+      description: Obtains a binding foreign exchange rate quote with a deterministic 60-second TTL.
+      operationId: createFXQuote
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateFXQuoteRequest'
+      responses:
+        '201':
+          description: Guaranteed quote locked.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FXQuote'
+
+  /v1/p2p/loans:
+    post:
+      summary: Originate P2P Loan Contract
+      description: Creates loan contract tied to Custodian Bank FBO Escrow account.
+      operationId: originateLoan
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OriginateLoanRequest'
+      responses:
+        '201':
+          description: Loan originated and ready for funding.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoanAccount'
+
+  /v1/p2p/loans/{id}/disburse:
+    post:
+      summary: Disburse Loan from Escrow
+      description: Verifies 100% investor pooling and triggers disbursement payout to borrower bank account.
+      operationId: disburseLoan
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Disbursement initiated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoanAccount'
+
+  /v1/p2p/loans/{id}/repay:
+    post:
+      summary: Process Repayment Collection and Waterfall Split
+      description: Collects borrower installment payment into Escrow and executes atomic mathematical waterfall split.
+      operationId: processLoanRepayment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProcessLoanRepaymentRequest'
+      responses:
+        '200':
+          description: Repayment collected and waterfall splits committed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RepaymentWaterfallResult'
+
+  /v1/ledger/accounts:
+    post:
+      summary: Create Ledger Account
+      operationId: createLedgerAccount
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateLedgerAccountRequest'
+      responses:
+        '201':
+          description: Account created in Chart of Accounts.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LedgerAccount'
+
+  /v1/ledger/accounts/{id}/balance:
+    get:
+      summary: Get Real-Time Account Balance
+      operationId: getAccountBalance
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Real-time balance snapshot.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountBalanceSnapshot'
+
+  /v1/ledger/journals:
+    post:
+      summary: Post Balanced Double-Entry Journal Entry
+      description: Atomic multi-leg journal posting enforcing Debits == Credits zero-sum invariant.
+      operationId: postJournalEntry
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostJournalEntryRequest'
+      responses:
+        '201':
+          description: Journal entry committed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JournalEntryReceipt'
+        '422':
+          description: Balance mismatch or debit/credit unbalance.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/webhooks/endpoints:
+    post:
+      summary: Register Webhook Endpoint
+      operationId: registerWebhookEndpoint
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterWebhookRequest'
+      responses:
+        '201':
+          description: Webhook endpoint registered.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookEndpoint'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: Unique UUIDv4 token guaranteeing exactly-once transactional semantics.
+      schema:
+        type: string
+        format: uuid
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        default: 20
+        maximum: 100
+    StartingAfter:
+      name: starting_after
+      in: query
+      schema:
+        type: string
+        format: uuid
+
+  responses:
+    BadRequestError:
+      description: Invalid request payload or parameter validation failure.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFoundError:
+      description: Entity not found.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    IdempotencyConflictError:
+      description: Concurrent request in flight for this Idempotency-Key.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    PaymentDeclinedError:
+      description: Card or payment authorization was declined by issuer or rail.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+  schemas:
+    PaymentIntentStatus:
+      type: string
+      enum:
+        - REQUIRES_PAYMENT_METHOD
+        - REQUIRES_CONFIRMATION
+        - REQUIRES_ACTION
+        - PROCESSING
+        - SUCCEEDED
+        - CANCELLED
+
+    CreatePaymentIntentRequest:
+      type: object
+      required:
+        - amount
+        - currency
+      properties:
+        amount:
+          type: integer
+          description: Amount in minor currency units (e.g., 10000 for $100.00 USD).
+          example: 10000
+        currency:
+          type: string
+          description: ISO 4217 three-letter currency code.
+          example: USD
+        customer_id:
+          type: string
+          format: uuid
+        capture_method:
+          type: string
+          enum: [AUTOMATIC, MANUAL]
+          default: AUTOMATIC
+        allowed_payment_methods:
+          type: array
+          items:
+            type: string
+          example: ["CARD", "VA_BCA", "QRIS"]
+        description:
+          type: string
+          example: "Order #8491 - Luxury Watch"
+        metadata:
+          type: object
+          additionalProperties: true
+
+    PaymentIntent:
+      type: object
+      required:
+        - id
+        - amount
+        - currency
+        - status
+        - client_secret
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        amount:
+          type: integer
+          example: 10000
+        currency:
+          type: string
+          example: USD
+        status:
+          $ref: '#/components/schemas/PaymentIntentStatus'
+        client_secret:
+          type: string
+          example: "pi_secret_8df72b9a7f"
+        capture_method:
+          type: string
+          example: "AUTOMATIC"
+        allowed_payment_methods:
+          type: array
+          items:
+            type: string
+        next_action:
+          type: object
+          properties:
+            type:
+              type: string
+              example: "redirect_to_url"
+            redirect_url:
+              type: string
+              example: "https://bank.acs.com/3ds2/challenge"
+        created_at:
+          type: string
+          format: date-time
+
+    ConfirmPaymentIntentRequest:
+      type: object
+      properties:
+        payment_method_id:
+          type: string
+          format: uuid
+        payment_token:
+          type: string
+          description: PCI Vault card token or wallet ephemeral token.
+        return_url:
+          type: string
+          description: Redirect callback URL for 3DS challenge completion.
+
+    CreateRefundRequest:
+      type: object
+      required:
+        - transaction_id
+        - amount
+        - currency
+        - reason
+      properties:
+        transaction_id:
+          type: string
+          format: uuid
+        amount:
+          type: integer
+          example: 2500
+        currency:
+          type: string
+          example: USD
+        reason:
+          type: string
+          enum: [DUPLICATE, FRAUDULENT, REQUESTED_BY_CUSTOMER]
+
+    Refund:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        transaction_id:
+          type: string
+          format: uuid
+        amount:
+          type: integer
+        currency:
+          type: string
+        status:
+          type: string
+          example: "SUCCEEDED"
+        created_at:
+          type: string
+          format: date-time
+
+    CreatePayoutOrderRequest:
+      type: object
+      required:
+        - payout_type
+        - source_currency
+        - source_amount
+        - target_currency
+        - beneficiary_account_name
+        - beneficiary_account_number
+        - beneficiary_bank_code
+        - beneficiary_country
+      properties:
+        payout_type:
+          type: string
+          enum: [LOCAL_INSTANT, LOCAL_BATCH, CROSS_BORDER]
+        source_currency:
+          type: string
+          example: USD
+        source_amount:
+          type: integer
+          example: 500000
+        target_currency:
+          type: string
+          example: IDR
+        fx_quote_id:
+          type: string
+          format: uuid
+        beneficiary_account_name:
+          type: string
+          example: "PT Maju Perkasa"
+        beneficiary_account_number:
+          type: string
+          example: "8271039912"
+        beneficiary_bank_code:
+          type: string
+          example: "BCA_ID"
+        beneficiary_country:
+          type: string
+          example: "ID"
+        purpose_code:
+          type: string
+          example: "SALA"
+
+    PayoutOrder:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        payout_type:
+          type: string
+        source_currency:
+          type: string
+        source_amount:
+          type: integer
+        target_currency:
+          type: string
+        target_amount:
+          type: integer
+        status:
+          type: string
+          example: "SETTLED"
+        rail_code:
+          type: string
+          example: "BI_FAST"
+        end_to_end_id:
+          type: string
+          example: "E2E-20261110-827192"
+        created_at:
+          type: string
+          format: date-time
+
+    ValidateBeneficiaryRequest:
+      type: object
+      required:
+        - bank_code
+        - account_number
+      properties:
+        bank_code:
+          type: string
+          example: "BCA_ID"
+        account_number:
+          type: string
+          example: "8271039912"
+
+    BeneficiaryValidationResult:
+      type: object
+      properties:
+        bank_code:
+          type: string
+        account_number:
+          type: string
+        account_holder_name:
+          type: string
+          example: "PT MAJU PERKASA"
+        is_valid:
+          type: boolean
+          example: true
+
+    CreateFXQuoteRequest:
+      type: object
+      required:
+        - base_currency
+        - target_currency
+        - base_amount
+      properties:
+        base_currency:
+          type: string
+          example: "USD"
+        target_currency:
+          type: string
+          example: "IDR"
+        base_amount:
+          type: integer
+          example: 100000
+
+    FXQuote:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        base_currency:
+          type: string
+        target_currency:
+          type: string
+        base_amount:
+          type: integer
+        target_amount:
+          type: integer
+        exchange_rate:
+          type: number
+          example: 15650.25
+        expires_at:
+          type: string
+          format: date-time
+
+    OriginateLoanRequest:
+      type: object
+      required:
+        - borrower_id
+        - principal_amount
+        - annual_interest_rate
+        - tenor_months
+      properties:
+        borrower_id:
+          type: string
+          format: uuid
+        principal_amount:
+          type: integer
+          example: 50000000
+        annual_interest_rate:
+          type: number
+          example: 14.50
+        tenor_months:
+          type: integer
+          example: 12
+
+    LoanAccount:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        loan_reference:
+          type: string
+          example: "LOAN-2026-90412"
+        principal_amount:
+          type: integer
+        status:
+          type: string
+          example: "ACTIVE"
+        escrow_account_id:
+          type: string
+          format: uuid
+        disbursed_at:
+          type: string
+          format: date-time
+
+    ProcessLoanRepaymentRequest:
+      type: object
+      required:
+        - payment_method_id
+        - installment_sequence
+        - collection_amount
+      properties:
+        payment_method_id:
+          type: string
+          format: uuid
+        installment_sequence:
+          type: integer
+          example: 1
+        collection_amount:
+          type: integer
+          example: 4500000
+
+    RepaymentWaterfallResult:
+      type: object
+      properties:
+        installment_id:
+          type: string
+          format: uuid
+        gross_collected:
+          type: integer
+        principal_allocated:
+          type: integer
+        interest_allocated:
+          type: integer
+        platform_fee:
+          type: integer
+        withholding_tax:
+          type: integer
+        splits_count:
+          type: integer
+
+    CreateLedgerAccountRequest:
+      type: object
+      required:
+        - account_number
+        - category
+        - currency
+      properties:
+        account_number:
+          type: string
+          example: "210100"
+        category:
+          type: string
+          enum: [ASSET, LIABILITY, EQUITY, REVENUE, EXPENSE]
+        currency:
+          type: string
+          example: "USD"
+        allow_negative_balance:
+          type: boolean
+          default: false
+
+    LedgerAccount:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        account_number:
+          type: string
+        category:
+          type: string
+        currency:
+          type: string
+        is_active:
+          type: boolean
+
+    AccountBalanceSnapshot:
+      type: object
+      properties:
+        account_id:
+          type: string
+          format: uuid
+        currency:
+          type: string
+        cleared_balance:
+          type: integer
+          example: 15400000
+        pending_balance:
+          type: integer
+          example: 250000
+        version:
+          type: integer
+        updated_at:
+          type: string
+          format: date-time
+
+    PostJournalEntryRequest:
+      type: object
+      required:
+        - correlation_id
+        - transaction_type
+        - entry_legs
+      properties:
+        correlation_id:
+          type: string
+        transaction_type:
+          type: string
+        description:
+          type: string
+        entry_legs:
+          type: array
+          items:
+            type: object
+            required:
+              - account_id
+              - direction
+              - amount
+              - currency
+            properties:
+              account_id:
+                type: string
+                format: uuid
+              direction:
+                type: string
+                enum: [DEBIT, CREDIT]
+              amount:
+                type: integer
+              currency:
+                type: string
+
+    JournalEntryReceipt:
+      type: object
+      properties:
+        entry_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          example: "COMMITTED"
+        posted_at:
+          type: string
+          format: date-time
+
+    RegisterWebhookRequest:
+      type: object
+      required:
+        - url
+        - subscribed_events
+      properties:
+        url:
+          type: string
+          format: uri
+          example: "https://merchant.com/api/webhooks/gateway"
+        subscribed_events:
+          type: array
+          items:
+            type: string
+          example: ["payment_intent.succeeded", "payout.settled", "loan.disbursed"]
+
+    WebhookEndpoint:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        url:
+          type: string
+        secret:
+          type: string
+          example: "whsec_98f41e0b"
+        status:
+          type: string
+
+    ErrorResponse:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          example: "INSUFFICIENT_FUNDS"
+        message:
+          type: string
+          example: "The card issuer declined the transaction due to insufficient funds."
+        param:
+          type: string
+        doc_url:
+          type: string
+          example: "https://docs.gateway.platform.internal/errors/INSUFFICIENT_FUNDS"

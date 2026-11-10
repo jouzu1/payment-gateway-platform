@@ -1,0 +1,55 @@
+sequenceDiagram
+    autonumber
+    participant Client as Merchant Client
+    participant Gateway as API Gateway (Envoy)
+    participant Saga as Saga Orchestrator (Temporal)
+    participant Ledger as Double-Entry Ledger Core
+    participant DB as PostgreSQL Core DB
+    participant Outbox as outbox_events Table
+    participant WAL as PostgreSQL Write-Ahead Log
+    participant CDC as Debezium CDC Connector
+    participant Kafka as Apache Kafka Event Bus
+    participant Rail as External Banking Rail Adapter
+
+    Client->>Gateway: POST /v1/payouts (Idempotency-Key: "idemp_abc123")
+    Gateway->>Saga: Initialize Payout Saga Workflow
+
+    rect rgb(240, 248, 255)
+        Note over Saga,Outbox: Step 1: Atomic Ledger Hold & Outbox Insert
+        Saga->>DB: BEGIN TRANSACTION
+        Saga->>Ledger: Reserve Funds (Hold Leg on Source Account)
+        Ledger->>DB: INSERT INTO entry_legs (direction='DEBIT', status='HOLD')
+        Saga->>Outbox: INSERT INTO outbox_events (type='payout.dispatched', payload)
+        Saga->>DB: COMMIT TRANSACTION
+        DB-->>Saga: Commit Success (ACID Local Guarantee)
+    end
+
+    rect rgb(245, 255, 250)
+        Note over DB,Kafka: Step 2: Zero Dual-Write Event Streaming via CDC
+        DB->>WAL: Append Commit Record to WAL
+        WAL->>CDC: Debezium reads logical WAL streaming replication
+        CDC->>Kafka: Publish CloudEvent v1.0 (Topic: payments.outbox)
+        Kafka-->>CDC: Cluster ACK (min.isr=2, acks=all)
+        CDC->>DB: Commit Replication Slot Offset
+    end
+
+    rect rgb(255, 250, 240)
+        Note over Kafka,Rail: Step 3: Banking Rail Execution & Settlement
+        Kafka->>Rail: Consume Payout Dispatched Event
+        Rail->>Rail: Dispatch to Central Bank (ISO 20022 pacs.008)
+        alt Banking Rail Confirms Settlement (Success)
+            Rail->>Saga: Payout Confirmed (pacs.002 ACCP)
+            Saga->>DB: BEGIN TRANSACTION
+            Saga->>Ledger: Commit Hold (Settle to Clearing Nostro)
+            Saga->>Outbox: INSERT INTO outbox_events (type='payout.completed')
+            Saga->>DB: COMMIT
+            Gateway-->>Client: HTTP 200 OK (Status: SETTLED)
+        else Banking Rail Rejects or Times Out (Terminal Failure)
+            Rail->>Saga: Payout Rejected (pacs.002 RJCT)
+            Saga->>DB: BEGIN TRANSACTION (Compensating Transaction)
+            Saga->>Ledger: Release Hold (Restore Merchant Balance)
+            Saga->>Outbox: INSERT INTO outbox_events (type='payout.reversed')
+            Saga->>DB: COMMIT
+            Gateway-->>Client: HTTP 400 Bad Request (Status: FAILED_REVERSED)
+        end
+    end

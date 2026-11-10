@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-and-verify:
+    name: Lint, Validate Schemas & Run E2E Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Linting Tools
+        run: |
+          npm install -g markdownlint-cli
+
+      - name: Step 1 - lint
+        run: |
+          markdownlint "docs/**/*.md" "README.md"
+
+      - name: Step 2 - validate-schemas
+        run: |
+          python scripts/validate-schemas.py
+
+      - name: Step 3 - run-tests
+        run: |
+          python scripts/run-e2e-tests.py --all --verbose
