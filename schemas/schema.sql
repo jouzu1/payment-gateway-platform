@@ -673,3 +673,267 @@ AFTER INSERT OR UPDATE ON entry_legs
 DEFERRABLE INITIALLY DEFERRED
 FOR EACH ROW
 EXECUTE FUNCTION fn_trg_verify_journal_entry_balance();
+
+-- =============================================================================
+-- 10. RECONCILIATION ENGINE & CLEARING STATEMENTS SUBSYSTEM (R2)
+-- =============================================================================
+
+-- -----------------------------------------------------------------------------
+-- 10.1 Enumerations for Reconciliation & Clearing Subsystem
+-- -----------------------------------------------------------------------------
+
+CREATE TYPE statement_format_type AS ENUM (
+    'CAMT_053',
+    'CAMT_052',
+    'CAMT_054',
+    'MT940',
+    'MT942',
+    'BAI2',
+    'NACHA',
+    'CSV',
+    'JSON_WEBHOOK',
+    'BLOCKCHAIN_RPC'
+);
+
+CREATE TYPE statement_status AS ENUM (
+    'INGESTED',
+    'PARSED',
+    'PROCESSING',
+    'RECONCILED',
+    'ERROR',
+    'SUPERSEDED'
+);
+
+CREATE TYPE reconciliation_topology_type AS ENUM (
+    'ONE_TO_ONE',
+    'NETTING',
+    'TRIPARTITE',
+    'STREAMING',
+    'ON_CHAIN'
+);
+
+CREATE TYPE reconciliation_run_status AS ENUM (
+    'PENDING',
+    'IN_PROGRESS',
+    'COMPLETED',
+    'COMPLETED_WITH_BREAKS',
+    'FAILED',
+    'CANCELLED'
+);
+
+CREATE TYPE recon_match_status AS ENUM (
+    'EXACT_MATCH',
+    'TOLERANCE_MATCH',
+    'UNMATCHED_INTERNAL',
+    'UNMATCHED_EXTERNAL',
+    'AMOUNT_DISCREPANCY',
+    'TIMING_DELAY',
+    'SKIPPED_ALREADY_PROCESSED'
+);
+
+CREATE TYPE recon_break_class AS ENUM (
+    'UNMATCHED_INTERNAL',
+    'UNMATCHED_EXTERNAL',
+    'AMOUNT_MISMATCH',
+    'TIMING_DELAY',
+    'FRACTIONAL_ROUNDING_BREAK',
+    'CHAIN_REORG_BREAK'
+);
+
+CREATE TYPE recon_break_status AS ENUM (
+    'OPEN',
+    'INVESTIGATING',
+    'PENDING_APPROVAL',
+    'RESOLVED',
+    'WRITTEN_OFF',
+    'ESCALATED'
+);
+
+CREATE TYPE break_resolution_action AS ENUM (
+    'FORCE_MATCH',
+    'WRITE_OFF_VARIANCE',
+    'ALLOCATE_SUSPENSE',
+    'TRANSIT_HOLD',
+    'MANUAL_REPAIR',
+    'REJECT_RECORD'
+);
+
+-- -----------------------------------------------------------------------------
+-- 10.2 Table 1: Clearing Statements Header
+-- -----------------------------------------------------------------------------
+
+CREATE TABLE clearing_statements (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    statement_reference VARCHAR(128) NOT NULL UNIQUE,
+    rail_code VARCHAR(32) NOT NULL,
+    bank_code VARCHAR(32),
+    account_number VARCHAR(64) NOT NULL,
+    statement_format statement_format_type NOT NULL,
+    currency VARCHAR(3) NOT NULL,
+    statement_date DATE NOT NULL,
+    opening_balance BIGINT NOT NULL DEFAULT 0,
+    closing_balance BIGINT NOT NULL DEFAULT 0,
+    total_debit_amount BIGINT NOT NULL DEFAULT 0,
+    total_credit_amount BIGINT NOT NULL DEFAULT 0,
+    total_lines_count INT NOT NULL DEFAULT 0,
+    file_hash VARCHAR(64) NOT NULL UNIQUE,
+    replaces_statement_id UUID REFERENCES clearing_statements(id) ON DELETE SET NULL,
+    raw_payload_url TEXT,
+    status statement_status NOT NULL DEFAULT 'INGESTED',
+    metadata JSONB DEFAULT '{}',
+    reconciled_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp()
+);
+
+CREATE INDEX idx_clearing_statements_rail_date ON clearing_statements(rail_code, statement_date DESC);
+CREATE INDEX idx_clearing_statements_status ON clearing_statements(status);
+CREATE INDEX idx_clearing_statements_file_hash ON clearing_statements(file_hash);
+CREATE INDEX idx_clearing_statements_replaces ON clearing_statements(replaces_statement_id) WHERE replaces_statement_id IS NOT NULL;
+
+-- -----------------------------------------------------------------------------
+-- 10.3 Table 2: Partitioned Statement Lines (Partitioned by booking_date)
+-- -----------------------------------------------------------------------------
+
+CREATE TABLE statement_lines (
+    id UUID DEFAULT gen_random_uuid(),
+    statement_id UUID NOT NULL REFERENCES clearing_statements(id) ON DELETE CASCADE,
+    line_sequence INT NOT NULL,
+    bank_reference VARCHAR(256) NOT NULL,
+    end_to_end_id VARCHAR(128),
+    rail_transaction_ref VARCHAR(128),
+    account_number VARCHAR(64),
+    direction entry_direction NOT NULL,
+    amount BIGINT NOT NULL CHECK (amount > 0),
+    fee_amount BIGINT NOT NULL DEFAULT 0,
+    net_amount BIGINT NOT NULL,
+    currency VARCHAR(3) NOT NULL,
+    value_date DATE NOT NULL,
+    booking_date DATE NOT NULL,
+    line_hash VARCHAR(64) NOT NULL,
+    reconciliation_status VARCHAR(32) NOT NULL DEFAULT 'PENDING',
+    original_line_id UUID,
+    raw_data JSONB DEFAULT '{}',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp(),
+    CONSTRAINT pk_statement_lines PRIMARY KEY (id, booking_date),
+    CONSTRAINT uq_statement_lines_seq UNIQUE (statement_id, line_sequence, booking_date)
+) PARTITION BY RANGE (booking_date);
+
+CREATE TABLE statement_lines_default PARTITION OF statement_lines DEFAULT;
+
+CREATE INDEX idx_statement_lines_stmt ON statement_lines(statement_id);
+CREATE INDEX idx_statement_lines_hash ON statement_lines(line_hash, booking_date);
+CREATE INDEX idx_statement_lines_bank_ref ON statement_lines(bank_reference, booking_date);
+CREATE INDEX idx_statement_lines_end_to_end ON statement_lines(end_to_end_id, booking_date) WHERE end_to_end_id IS NOT NULL;
+CREATE INDEX idx_statement_lines_recon_status ON statement_lines(reconciliation_status, booking_date);
+CREATE INDEX idx_statement_lines_natural_lookup ON statement_lines(statement_id, bank_reference, booking_date, amount, direction);
+
+-- -----------------------------------------------------------------------------
+-- 10.4 Table 3: Reconciliation Runs Execution Header
+-- -----------------------------------------------------------------------------
+
+CREATE TABLE reconciliation_runs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    run_number VARCHAR(64) NOT NULL UNIQUE,
+    topology reconciliation_topology_type NOT NULL DEFAULT 'ONE_TO_ONE',
+    scope_rail_code VARCHAR(32) NOT NULL,
+    scope_currency VARCHAR(3) NOT NULL,
+    window_start TIMESTAMPTZ NOT NULL,
+    window_end TIMESTAMPTZ NOT NULL,
+    status reconciliation_run_status NOT NULL DEFAULT 'PENDING',
+    total_internal_records INT NOT NULL DEFAULT 0,
+    total_external_records INT NOT NULL DEFAULT 0,
+    matched_records_count INT NOT NULL DEFAULT 0,
+    break_records_count INT NOT NULL DEFAULT 0,
+    total_matched_volume BIGINT NOT NULL DEFAULT 0,
+    total_break_volume BIGINT NOT NULL DEFAULT 0,
+    auto_resolved_breaks_count INT NOT NULL DEFAULT 0,
+    auto_resolved_volume BIGINT NOT NULL DEFAULT 0,
+    initiated_by VARCHAR(64) NOT NULL DEFAULT 'SYSTEM_SCHEDULER',
+    error_message TEXT,
+    audit_signature VARCHAR(128),
+    metadata JSONB DEFAULT '{}',
+    started_at TIMESTAMPTZ,
+    completed_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp(),
+    CONSTRAINT chk_recon_runs_window CHECK (window_end >= window_start)
+);
+
+CREATE INDEX idx_reconciliation_runs_window ON reconciliation_runs(window_start, window_end);
+CREATE INDEX idx_reconciliation_runs_status ON reconciliation_runs(status);
+CREATE INDEX idx_reconciliation_runs_scope ON reconciliation_runs(scope_rail_code, scope_currency);
+CREATE INDEX idx_reconciliation_runs_created ON reconciliation_runs(created_at DESC);
+
+-- -----------------------------------------------------------------------------
+-- 10.5 Table 4: Partitioned Reconciliation Matches (Partitioned by created_at)
+-- -----------------------------------------------------------------------------
+
+CREATE TABLE reconciliation_matches (
+    id UUID DEFAULT gen_random_uuid(),
+    reconciliation_run_id UUID NOT NULL REFERENCES reconciliation_runs(id) ON DELETE CASCADE,
+    match_topology reconciliation_topology_type NOT NULL DEFAULT 'ONE_TO_ONE',
+    match_status recon_match_status NOT NULL DEFAULT 'EXACT_MATCH',
+    internal_transaction_id UUID REFERENCES transactions(id) ON DELETE SET NULL,
+    internal_journal_entry_id UUID REFERENCES journal_entries(id) ON DELETE SET NULL,
+    statement_line_id UUID,
+    payout_order_id UUID REFERENCES payout_orders(id) ON DELETE SET NULL,
+    external_reference VARCHAR(128),
+    internal_amount BIGINT NOT NULL,
+    external_amount BIGINT NOT NULL,
+    variance_amount BIGINT NOT NULL DEFAULT 0,
+    currency VARCHAR(3) NOT NULL,
+    confidence_score NUMERIC(5, 4) NOT NULL DEFAULT 1.0000,
+    matched_at TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp(),
+    metadata JSONB DEFAULT '{}',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp(),
+    CONSTRAINT pk_reconciliation_matches PRIMARY KEY (id, created_at)
+) PARTITION BY RANGE (created_at);
+
+CREATE TABLE reconciliation_matches_default PARTITION OF reconciliation_matches DEFAULT;
+
+CREATE INDEX idx_reconciliation_matches_run ON reconciliation_matches(reconciliation_run_id, created_at);
+CREATE INDEX idx_reconciliation_matches_tx ON reconciliation_matches(internal_transaction_id, created_at) WHERE internal_transaction_id IS NOT NULL;
+CREATE INDEX idx_reconciliation_matches_journal ON reconciliation_matches(internal_journal_entry_id, created_at) WHERE internal_journal_entry_id IS NOT NULL;
+CREATE INDEX idx_reconciliation_matches_payout ON reconciliation_matches(payout_order_id, created_at) WHERE payout_order_id IS NOT NULL;
+CREATE INDEX idx_reconciliation_matches_stmt_line ON reconciliation_matches(statement_line_id, created_at) WHERE statement_line_id IS NOT NULL;
+CREATE INDEX idx_reconciliation_matches_ext_ref ON reconciliation_matches(external_reference, created_at);
+CREATE INDEX idx_reconciliation_matches_status ON reconciliation_matches(match_status, created_at);
+
+-- -----------------------------------------------------------------------------
+-- 10.6 Table 5: Reconciliation Breaks Linked to Settlement Batches
+-- -----------------------------------------------------------------------------
+
+CREATE TABLE reconciliation_breaks (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    reconciliation_run_id UUID NOT NULL REFERENCES reconciliation_runs(id) ON DELETE RESTRICT,
+    settlement_batch_id UUID REFERENCES settlement_batches(id) ON DELETE SET NULL,
+    break_number VARCHAR(64) NOT NULL UNIQUE,
+    break_class recon_break_class NOT NULL,
+    internal_transaction_id UUID REFERENCES transactions(id) ON DELETE SET NULL,
+    payout_order_id UUID REFERENCES payout_orders(id) ON DELETE SET NULL,
+    statement_line_id UUID,
+    expected_amount BIGINT,
+    actual_amount BIGINT,
+    discrepancy_amount BIGINT NOT NULL,
+    currency VARCHAR(3) NOT NULL,
+    status recon_break_status NOT NULL DEFAULT 'OPEN',
+    resolution_action break_resolution_action,
+    resolution_journal_entry_id UUID REFERENCES journal_entries(id) ON DELETE SET NULL,
+    variance_account_id UUID REFERENCES ledger_accounts(id) ON DELETE SET NULL,
+    assigned_to VARCHAR(64),
+    resolution_notes TEXT,
+    resolved_by VARCHAR(64),
+    resolved_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp()
+);
+
+CREATE INDEX idx_reconciliation_breaks_run ON reconciliation_breaks(reconciliation_run_id);
+CREATE INDEX idx_reconciliation_breaks_batch ON reconciliation_breaks(settlement_batch_id) WHERE settlement_batch_id IS NOT NULL;
+CREATE INDEX idx_reconciliation_breaks_status ON reconciliation_breaks(status);
+CREATE INDEX idx_reconciliation_breaks_class ON reconciliation_breaks(break_class);
+CREATE INDEX idx_reconciliation_breaks_tx ON reconciliation_breaks(internal_transaction_id) WHERE internal_transaction_id IS NOT NULL;
+CREATE INDEX idx_reconciliation_breaks_payout ON reconciliation_breaks(payout_order_id) WHERE payout_order_id IS NOT NULL;
+CREATE INDEX idx_reconciliation_breaks_stmt_line ON reconciliation_breaks(statement_line_id) WHERE statement_line_id IS NOT NULL;
+CREATE INDEX idx_reconciliation_breaks_resolution_journal ON reconciliation_breaks(resolution_journal_entry_id) WHERE resolution_journal_entry_id IS NOT NULL;

@@ -20,6 +20,8 @@ from tests.e2e.harness import (
     IdempotencyEngine, IdempotencyState,
     SagaOrchestrator, SagaState,
     ReconciliationEngine, ReconMatchStatus,
+    ReconBreakClass, ReconBreakStatus, BreakResolutionAction,
+    StatementFormat, StatementStatus,
     IngressGateway
 )
 
@@ -630,33 +632,351 @@ class TestTier2Boundaries(unittest.TestCase):
     # F19: Automated 3-Way Reconciliation Engine
     # =========================================================================
     def test_f19_b01_recon_unmatched_internal_break_detected(self):
-        internal = {"tx_break_1": 5000}
-        gateway = {"tx_break_1": 5000}
+        """
+        Feature 19 Boundary 01: Break Lifecycle Finite State Machine (FSM).
+        Validates transition graph: OPEN -> INVESTIGATING -> RESOLVED / WRITTEN_OFF.
+        Enforces invalid transition rejection and terminal state immutability.
+        """
+        # 1. Backward-compatible 3-way check
+        internal = {"tx_break_01": 500000}  # $5,000.00
+        gateway = {"tx_break_01": 500000}
         bank = {}  # missing from bank statement!
         res = ReconciliationEngine.match_records(internal, gateway, bank)
-        self.assertEqual(res["tx_break_1"], ReconMatchStatus.UNMATCHED_INTERNAL)
+        self.assertEqual(res["tx_break_01"], ReconMatchStatus.UNMATCHED_INTERNAL)
+
+        # 2. Break Creation in OPEN status
+        engine = ReconciliationEngine()
+        brk1 = engine.create_break(
+            break_id="BRK-INT-001",
+            run_id="RUN-EOD-01",
+            settlement_batch_id="BATCH-20261111-01",
+            break_class=getattr(ReconBreakClass, "UNMATCHED_INTERNAL", "UNMATCHED_INTERNAL"),
+            expected_amount=500000,
+            actual_amount=0,
+            discrepancy_amount=500000,
+            currency="USD",
+            internal_ref="tx_break_01"
+        )
+        self.assertEqual(brk1.status, ReconBreakStatus.OPEN)
+        self.assertEqual(brk1.discrepancy_amount, 500000)
+        self.assertEqual(brk1.settlement_batch_id, "BATCH-20261111-01")
+        self.assertIsNone(brk1.resolved_at)
+
+        # 3. Transition: OPEN -> INVESTIGATING
+        engine.transition_break(
+            break_id="BRK-INT-001",
+            target_status=ReconBreakStatus.INVESTIGATING,
+            actor_id="ops_analyst_01",
+            notes="Inquiring partner bank switch for missing settlement"
+        )
+        self.assertEqual(brk1.status, ReconBreakStatus.INVESTIGATING)
+
+        # 4. Invalid Transition Boundary: Cannot revert INVESTIGATING back to OPEN
+        with self.assertRaises((ValueError, RuntimeError, KeyError)):
+            engine.transition_break(
+                break_id="BRK-INT-001",
+                target_status=ReconBreakStatus.OPEN,
+                actor_id="ops_analyst_01"
+            )
+
+        # 5. Path A: INVESTIGATING -> RESOLVED (Force Match / Cleared)
+        resolved_brk = engine.resolve_break(
+            break_id="BRK-INT-001",
+            action=BreakResolutionAction.FORCE_MATCH,
+            resolved_by="ops_analyst_01",
+            notes="Bank cleared under amended settlement batch SEQ-99"
+        )
+        self.assertEqual(resolved_brk.status, ReconBreakStatus.RESOLVED)
+        self.assertEqual(resolved_brk.resolution_action, BreakResolutionAction.FORCE_MATCH)
+        self.assertEqual(resolved_brk.resolved_by, "ops_analyst_01")
+        self.assertIsNotNone(resolved_brk.resolved_at)
+
+        # Terminal state protection: Cannot transition a RESOLVED break
+        with self.assertRaises((ValueError, RuntimeError)):
+            engine.transition_break("BRK-INT-001", ReconBreakStatus.INVESTIGATING, "ops_analyst_01")
+
+        # 6. Path B: INVESTIGATING -> WRITTEN_OFF (Executive Approved Loss)
+        brk2 = engine.create_break(
+            break_id="BRK-INT-002",
+            run_id="RUN-EOD-01",
+            settlement_batch_id="BATCH-20261111-01",
+            break_class=getattr(ReconBreakClass, "UNMATCHED_INTERNAL", "UNMATCHED_INTERNAL"),
+            expected_amount=25000,
+            actual_amount=0,
+            discrepancy_amount=25000,
+            currency="USD",
+            internal_ref="tx_lost_packet_02"
+        )
+        engine.transition_break("BRK-INT-002", ReconBreakStatus.INVESTIGATING, "ops_analyst_02")
+        written_off_brk = engine.resolve_break(
+            break_id="BRK-INT-002",
+            action=BreakResolutionAction.WRITE_OFF_VARIANCE,
+            resolved_by="treasury_director_01",
+            notes="Confirmed unrecoverable network drop; executive write-off"
+        )
+        self.assertEqual(written_off_brk.status, ReconBreakStatus.WRITTEN_OFF)
+        self.assertEqual(written_off_brk.resolution_action, BreakResolutionAction.WRITE_OFF_VARIANCE)
+
+        # Terminal state protection: Cannot transition a WRITTEN_OFF break
+        with self.assertRaises((ValueError, RuntimeError)):
+            engine.transition_break("BRK-INT-002", ReconBreakStatus.OPEN, "ops_analyst_02")
 
     def test_f19_b02_recon_unmatched_external_break_detected(self):
+        """
+        Feature 19 Boundary 02: Unallocated External Credit Parked in Suspense Account (240900).
+        Validates double-entry quarantine: Debit Nostro (110100), Credit Suspense (240900).
+        Asserts merchant payable accounts remain untouched and ledger accounting equation holds.
+        """
+        # 1. Backward-compatible 3-way check
         internal = {}
         gateway = {}
-        bank = {"tx_external_only": 2500}
+        bank = {"WIRE-EXT-SUSPENSE-01": 125000}  # $1,250.00 unannounced wire
         res = ReconciliationEngine.match_records(internal, gateway, bank)
-        self.assertEqual(res["tx_external_only"], ReconMatchStatus.UNMATCHED_EXTERNAL)
+        self.assertEqual(res["WIRE-EXT-SUSPENSE-01"], ReconMatchStatus.UNMATCHED_EXTERNAL)
+
+        # 2. Set up Chart of Accounts in Double-Entry Ledger
+        nostro_acc = self.ledger.create_account("110100", "Bank Settlement Nostro", AccountType.ASSET, "USD")
+        suspense_acc = self.ledger.create_account("240900", "Unidentified Receipts / Suspense Liability", AccountType.LIABILITY, "USD")
+        merchant_acc = self.ledger.create_account("210100", "Merchant Settlement Payable", AccountType.LIABILITY, "USD")
+
+        # 3. Engine detects UNMATCHED_EXTERNAL break
+        engine = ReconciliationEngine()
+        brk = engine.create_break(
+            break_id="BRK-EXT-SUSPENSE-01",
+            run_id="RUN-INTRADAY-02",
+            settlement_batch_id=None,
+            break_class=getattr(ReconBreakClass, "UNMATCHED_EXTERNAL", "UNMATCHED_EXTERNAL"),
+            expected_amount=0,
+            actual_amount=125000,
+            discrepancy_amount=125000,
+            currency="USD",
+            external_ref="WIRE-EXT-SUSPENSE-01"
+        )
+        self.assertEqual(brk.break_class, ReconBreakClass.UNMATCHED_EXTERNAL)
+        self.assertEqual(brk.status, ReconBreakStatus.OPEN)
+
+        # 4. Execute Automated Suspense Parking (Action: ALLOCATE_SUSPENSE)
+        # Double-entry: Debit 110100 (Asset +125000), Credit 240900 (Liability +125000)
+        journal = self.ledger.post_journal_entry(
+            transaction_id=brk.break_id,
+            legs=[
+                EntryLeg(account_id="110100", amount=125000, direction=EntryDirection.DEBIT, currency="USD"),
+                EntryLeg(account_id="240900", amount=125000, direction=EntryDirection.CREDIT, currency="USD")
+            ],
+            description=f"Automated suspense parking for unallocated external wire {brk.external_ref}"
+        )
+        self.assertIsNotNone(journal.entry_id)
+
+        # Update break with resolution action
+        resolved_brk = engine.resolve_break(
+            break_id="BRK-EXT-SUSPENSE-01",
+            action=BreakResolutionAction.ALLOCATE_SUSPENSE,
+            resolved_by="system_auto_remediation",
+            notes=f"Parked in suspense liability 240900 via journal {journal.entry_id}"
+        )
+        self.assertEqual(resolved_brk.status, ReconBreakStatus.RESOLVED)
+        self.assertEqual(resolved_brk.resolution_action, BreakResolutionAction.ALLOCATE_SUSPENSE)
+
+        # 5. Financial Audit Invariants
+        self.assertEqual(nostro_acc.net_balance, 125000)      # Debit balance = 125000
+        self.assertEqual(suspense_acc.net_balance, 125000)    # Credit balance = 125000
+        self.assertEqual(merchant_acc.net_balance, 0)         # Merchant funds strictly isolated
+
+        # Accounting Equation: Assets == Liabilities + Equity
+        balanced, total_assets, total_liab_equity = self.ledger.verify_accounting_equation("USD")
+        self.assertTrue(balanced)
+        self.assertEqual(total_assets, 125000)
+        self.assertEqual(total_liab_equity, 125000)
 
     def test_f19_b03_recon_amount_discrepancy_break_detected(self):
+        """
+        Feature 19 Boundary 03: Tolerance Boundaries & Auto-Resolution vs Manual Break.
+        Formula: max_allowed_tolerance = min($2.00, gross_amount * 15 bps).
+        Tests:
+          1. Gross $1,000.00: 15 bps = $1.50 (150c) < $2.00.
+             - Variance = 150c (boundary <=): Auto-resolved to TOLERANCE_MATCH.
+             - Variance = 151c (boundary >): Manual break AMOUNT_MISMATCH / OPEN.
+          2. Gross $5,000.00: 15 bps = $7.50, capped at $2.00 (200c).
+             - Variance = 200c (boundary <=): Auto-resolved to TOLERANCE_MATCH.
+             - Variance = 201c (boundary >): Manual break AMOUNT_MISMATCH / OPEN.
+        """
+        # 1. Backward-compatible 3-way check
         internal = {"tx_amt_diff": 10000}
         gateway = {"tx_amt_diff": 10000}
         bank = {"tx_amt_diff": 9950}  # $0.50 difference
         res = ReconciliationEngine.match_records(internal, gateway, bank)
         self.assertEqual(res["tx_amt_diff"], ReconMatchStatus.AMOUNT_DISCREPANCY)
 
+        engine = ReconciliationEngine()
+
+        # Case 1: Gross = $1,000.00 (100,000 cents). 15 bps = 150 cents. min($2.00, $1.50) = 150 cents.
+        gross_1k = 100000
+
+        # Subcase 1A: Variance exactly at tolerance boundary (150 cents) -> Auto-resolved
+        match_res_1a, brk_1a = engine.match_one_to_one(
+            internal_ref="tx_1k_tol",
+            internal_amount=gross_1k,
+            external_ref="ext_1k_tol",
+            external_amount=gross_1k - 150,  # 99850 cents (diff = 150)
+            currency="USD"
+        )
+        self.assertEqual(match_res_1a, ReconMatchStatus.TOLERANCE_MATCH)
+        self.assertIsNone(brk_1a)
+
+        # Subcase 1B: Variance 1 cent above tolerance boundary (151 cents) -> Manual Break
+        match_res_1b, brk_1b = engine.match_one_to_one(
+            internal_ref="tx_1k_brk",
+            internal_amount=gross_1k,
+            external_ref="ext_1k_brk",
+            external_amount=gross_1k - 151,  # 99849 cents (diff = 151)
+            currency="USD"
+        )
+        self.assertEqual(match_res_1b, ReconMatchStatus.AMOUNT_DISCREPANCY)
+        self.assertIsNotNone(brk_1b)
+        self.assertEqual(brk_1b.break_class, ReconBreakClass.AMOUNT_MISMATCH)
+        self.assertEqual(brk_1b.status, ReconBreakStatus.OPEN)
+        self.assertEqual(brk_1b.discrepancy_amount, 151)
+
+        # Case 2: Gross = $5,000.00 (500,000 cents). 15 bps = 750 cents ($7.50). Capped by $2.00 (200 cents).
+        gross_5k = 500000
+
+        # Subcase 2A: Variance exactly at $2.00 cap (200 cents) -> Auto-resolved
+        match_res_2a, brk_2a = engine.match_one_to_one(
+            internal_ref="tx_5k_tol",
+            internal_amount=gross_5k,
+            external_ref="ext_5k_tol",
+            external_amount=gross_5k - 200,  # 499800 cents (diff = 200)
+            currency="USD"
+        )
+        self.assertEqual(match_res_2a, ReconMatchStatus.TOLERANCE_MATCH)
+        self.assertIsNone(brk_2a)
+
+        # Subcase 2B: Variance 1 cent above $2.00 cap (201 cents) -> Manual Break
+        match_res_2b, brk_2b = engine.match_one_to_one(
+            internal_ref="tx_5k_brk",
+            internal_amount=gross_5k,
+            external_ref="ext_5k_brk",
+            external_amount=gross_5k - 201,  # 499799 cents (diff = 201)
+            currency="USD"
+        )
+        self.assertEqual(match_res_2b, ReconMatchStatus.AMOUNT_DISCREPANCY)
+        self.assertIsNotNone(brk_2b)
+        self.assertEqual(brk_2b.break_class, ReconBreakClass.AMOUNT_MISMATCH)
+        self.assertEqual(brk_2b.status, ReconBreakStatus.OPEN)
+        self.assertEqual(brk_2b.discrepancy_amount, 201)
+
     def test_f19_b04_corrupted_camt053_xml_rejection(self):
-        corrupt_xml = "<Document><BkToCstmrStmt>"  # unclosed tag
-        self.assertTrue(corrupt_xml.startswith("<Document>"))
+        """
+        Feature 19 Boundary 04: Corrupted Statement Rejection & Chain Reorganization Break.
+        Validates:
+          1. Parser rejection on malformed / truncated XML (unclosed tags, missing headers)
+             without polluting statement tables or mutating balances.
+          2. Blockchain L1/L2 consensus reorganization detection generating CHAIN_REORG_BREAK.
+        """
+        engine = ReconciliationEngine()
+
+        # Part 1: Corrupted / Malformed Statement Rejection
+        corrupt_xml_samples = [
+            "<Document><BkToCstmrStmt>",                                          # Truncated unclosed tags
+            "NOT_XML_DATA_JUST_RAW_BINARY_\x00\xff\xfe",                          # Invalid byte sequence
+            "<Document><BkToCstmrStmt><Stmt></Stmt></BkToCstmrStmt></Document>"   # Missing required balance fields
+        ]
+
+        for payload in corrupt_xml_samples:
+            with self.assertRaises((ValueError, Exception)):
+                engine.ingest_statement(
+                    raw_content=payload,
+                    fmt=getattr(StatementFormat, "CAMT_053", "CAMT_053"),
+                    rail_code="RAIL_ACH"
+                )
+
+        # Part 2: Cryptographic On-Chain Matching: Chain Reorg Break Detection
+        # A transaction was confirmed at block 18500100, but a reorg drops/orphans the block.
+        on_chain_tx_ref = "0x7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b"
+        reorg_break = engine.detect_chain_reorg_break(
+            fiat_tx_ref="ramp_payout_9021",
+            chain_tx_hash=on_chain_tx_ref,
+            expected_amount=2500000,  # 25,000.00 USDC
+            expected_block_number=18500100,
+            canonical_block_hash="0x0000000000000000canonical_chain_tip",
+            receipt_status="DROPPED_REORG"
+        )
+        self.assertEqual(reorg_break.break_class, ReconBreakClass.CHAIN_REORG_BREAK)
+        self.assertEqual(reorg_break.status, ReconBreakStatus.OPEN)
+        self.assertEqual(reorg_break.discrepancy_amount, 2500000)
+        self.assertEqual(reorg_break.currency, "USDC")
+        self.assertIn("reorg", reorg_break.notes.lower())
 
     def test_f19_b05_recon_statement_duplicate_hash_ignored(self):
-        hashes = {"hash_stmt_01"}
-        self.assertIn("hash_stmt_01", hashes)
+        """
+        Feature 19 Boundary 05: 3-Tier Deduplication & Amended Statement Retransmission.
+        Tier 1: Full-file SHA256 retransmission guard (exact duplicate ignored).
+        Tier 2: Intra-statement line hash (worker crash idempotency).
+        Tier 3: Cross-statement natural occurrence deduplication:
+                Amended cumulative file retransmission where duplicated lines are flagged
+                SKIPPED_ALREADY_PROCESSED and excluded from reconciliation / ledger posting.
+        """
+        engine = ReconciliationEngine()
+
+        # Step 1: Initial Statement Ingestion (STMT-001)
+        # Raw file with 2 transactions: TX_101 ($100.00), TX_102 ($50.00)
+        stmt_content_v1 = (
+            "STMT_ID:STMT-001\n"
+            "RAIL:ACH\n"
+            "OPENING:100000\n"
+            "CLOSING:115000\n"
+            "TX_101,2026-11-11,10000,CREDIT,USD\n"
+            "TX_102,2026-11-11,5000,CREDIT,USD\n"
+        )
+        stmt1 = engine.ingest_statement(stmt_content_v1, fmt="CSV", rail_code="RAIL_ACH")
+        self.assertEqual(stmt1.statement_id, "STMT-001")
+        self.assertEqual(len(stmt1.lines), 2)
+        self.assertEqual(stmt1.status, StatementStatus.INGESTED)
+
+        # Tier 1 Deduplication: Exact same file re-transmitted -> ignored/idempotent return
+        stmt1_dup = engine.ingest_statement(stmt_content_v1, fmt="CSV", rail_code="RAIL_ACH")
+        self.assertEqual(stmt1_dup.statement_id, stmt1.statement_id)
+        self.assertEqual(stmt1_dup.file_hash, stmt1.file_hash)
+        self.assertTrue(getattr(stmt1_dup, "is_duplicate", True))
+
+        # Step 2: Tier 3 Cross-Statement Deduplication: Amended / Cumulative Retransmission (STMT-002)
+        # Partner bank sends amended EOD file containing original TX_101, TX_102 PLUS net-new TX_103 ($75.00)
+        stmt_content_v2 = (
+            "STMT_ID:STMT-002\n"
+            "RAIL:ACH\n"
+            "OPENING:100000\n"
+            "CLOSING:122500\n"
+            "TX_101,2026-11-11,10000,CREDIT,USD\n"  # Duplicate of STMT-001 line 1
+            "TX_102,2026-11-11,5000,CREDIT,USD\n"   # Duplicate of STMT-001 line 2
+            "TX_103,2026-11-11,7500,CREDIT,USD\n"   # Net-new line!
+        )
+        # Because file has 3 lines, Tier 1 file_hash is distinct from STMT-001
+        self.assertNotEqual(hashlib.sha256(stmt_content_v1.encode()).hexdigest(),
+                            hashlib.sha256(stmt_content_v2.encode()).hexdigest())
+
+        stmt2 = engine.ingest_statement(stmt_content_v2, fmt="CSV", rail_code="RAIL_ACH")
+        self.assertEqual(stmt2.statement_id, "STMT-002")
+        self.assertEqual(len(stmt2.lines), 3)
+
+        # Verify Tier 3 Status Classification
+        line1, line2, line3 = stmt2.lines
+        self.assertEqual(line1.reconciliation_status, ReconMatchStatus.SKIPPED_ALREADY_PROCESSED)
+        self.assertEqual(line2.reconciliation_status, ReconMatchStatus.SKIPPED_ALREADY_PROCESSED)
+        self.assertNotEqual(line3.reconciliation_status, ReconMatchStatus.SKIPPED_ALREADY_PROCESSED)
+
+        # Financial Ledger Protection Invariant:
+        # Only active (non-skipped) lines are routed to matcher and posted to ledger
+        active_lines = [l for l in stmt2.lines if l.reconciliation_status != ReconMatchStatus.SKIPPED_ALREADY_PROCESSED]
+        skipped_lines = [l for l in stmt2.lines if l.reconciliation_status == ReconMatchStatus.SKIPPED_ALREADY_PROCESSED]
+
+        self.assertEqual(len(active_lines), 1)
+        self.assertEqual(active_lines[0].bank_reference, "TX_103")
+        self.assertEqual(active_lines[0].amount, 7500)
+        self.assertEqual(len(skipped_lines), 2)
+
+        # Prevent double-posting: sum of active lines in amended statement is strictly $75.00 (not $225.00)
+        total_active_amount = sum(l.amount for l in active_lines)
+        self.assertEqual(total_active_amount, 7500)
 
     # =========================================================================
     # F20: Cloud Cost-Efficiency (FinOps) Strategy

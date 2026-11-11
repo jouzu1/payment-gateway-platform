@@ -21,6 +21,10 @@ from tests.e2e.harness import (
     IdempotencyEngine, IdempotencyState,
     SagaOrchestrator, SagaState,
     ReconciliationEngine, ReconMatchStatus,
+    ReconTopology, StatementFormat, StatementStatus,
+    ReconBreakClass, ReconBreakStatus,
+    ClearingStatement, StatementLine, ReconciliationBreak,
+    ReconciliationMatch, ReconciliationRun,
     IngressGateway
 )
 
@@ -712,30 +716,303 @@ class TestTier1Features(unittest.TestCase):
         self.assertEqual(cloudevent["source"], "/cdc/outbox")
 
     # =========================================================================
-    # F19: Automated 3-Way Reconciliation Engine
+    # F19: Automated Universal Pluggable Reconciliation Engine
     # =========================================================================
     def test_f19_01_exact_three_way_reconciliation_match(self):
-        internal = {"tx_1": 10000}
-        gateway = {"tx_1": 10000}
-        bank = {"tx_1": 10000}
-        res = ReconciliationEngine.match_records(internal, gateway, bank)
-        self.assertEqual(res["tx_1"], ReconMatchStatus.EXACT_MATCH)
+        """Topology 1: 1:1 Direct Matching (Instant Remittance & Single-Message Sales) with fee tolerance."""
+        # 1. Backward-compatible 3-way hash check
+        legacy_res = ReconciliationEngine.match_records(
+            internal_records={"tx_fednow_01": 10000},
+            gateway_records={"tx_fednow_01": 10000},
+            bank_records={"tx_fednow_01": 10000}
+        )
+        self.assertEqual(legacy_res["tx_fednow_01"], ReconMatchStatus.EXACT_MATCH)
+
+        engine = ReconciliationEngine()
+
+        # 2. Exact 1:1 Gross Settlement Match ($100.00 exact match)
+        internal_tx = {
+            "id": "tx_fednow_01",
+            "ref": "FEDNOW_E2E_1001",
+            "amount": 10000,
+            "currency": "USD"
+        }
+        external_line = {
+            "id": "line_bnk_01",
+            "ref": "FEDNOW_E2E_1001",
+            "amount": 10000,
+            "currency": "USD"
+        }
+        matches, breaks = engine.match_one_to_one(
+            internal_records=[internal_tx],
+            external_lines=[external_line],
+            tolerance_cents=200,
+            tolerance_bps=15
+        )
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0].topology, ReconTopology.ONE_TO_ONE)
+        self.assertEqual(matches[0].match_status, ReconMatchStatus.EXACT_MATCH)
+        self.assertEqual(matches[0].matched_amount, 10000)
+        self.assertEqual(matches[0].variance_amount, 0)
+        self.assertEqual(len(breaks), 0)
+
+        # 3. Fee Tolerance Matching (within min($2.00, 15 bps))
+        # Gross = $1,000.00 (100,000 cents), Fee deduction = $1.50 (150 cents) <= min(200, 150) = 150 cents
+        internal_gross = {
+            "id": "tx_fednow_02",
+            "ref": "FEDNOW_E2E_1002",
+            "amount": 100000,
+            "currency": "USD"
+        }
+        external_net = {
+            "id": "line_bnk_02",
+            "ref": "FEDNOW_E2E_1002",
+            "amount": 99850,
+            "currency": "USD"
+        }
+        matches_tol, breaks_tol = engine.match_one_to_one(
+            internal_records=[internal_gross],
+            external_lines=[external_net],
+            tolerance_cents=200,
+            tolerance_bps=15
+        )
+        self.assertEqual(len(matches_tol), 1)
+        self.assertEqual(matches_tol[0].variance_amount, 150)
+        self.assertIn(matches_tol[0].match_status, (ReconMatchStatus.TOLERANCE_MATCH, ReconMatchStatus.EXACT_MATCH))
+        self.assertEqual(len(breaks_tol), 0)
 
     def test_f19_02_iso20022_camt053_statement_parsing(self):
-        statement = {"stmt_id": "STMT_001", "electronic_seq": 1, "entries": [{"ntry_amt": 50000, "ccy": "USD"}]}
-        self.assertEqual(statement["entries"][0]["ntry_amt"], 50000)
+        """Topology 2: N:M Netting Matching (Card Schemes & ACH Batches) with ISO 20022 camt.053 parsing."""
+        engine = ReconciliationEngine()
+
+        # 1. Parse valid ISO 20022 camt.053 statement payload
+        camt_xml = """<?xml version="1.0" encoding="UTF-8"?>
+<Document xmlns="urn:iso:std:iso:20022:tech:xsd:camt.053.001.08">
+  <BkToCstmrStmt>
+    <Stmt>
+      <Id>STMT-CARD-20261111</Id>
+      <Acct><Id><Othr><Id>ACCT_NOSTRO_110100</Id></Othr></Id></Acct>
+      <Bal>
+        <Tp><CdOrPrtry><Cd>OPBD</Cd></CdOrPrtry></Tp>
+        <Amt Ccy="USD">10000.00</Amt>
+        <CdtDbtInd>CRDT</CdtDbtInd>
+      </Bal>
+      <Ntry>
+        <Amt Ccy="USD">490.50</Amt>
+        <CdtDbtInd>CRDT</CdtDbtInd>
+        <NtryDtls>
+          <TxDtls>
+            <Refs><EndToEndId>BATCH_VISA_20261111_01</EndToEndId></Refs>
+          </TxDtls>
+        </NtryDtls>
+      </Ntry>
+      <Bal>
+        <Tp><CdOrPrtry><Cd>CLBD</Cd></CdOrPrtry></Tp>
+        <Amt Ccy="USD">10490.50</Amt>
+        <CdtDbtInd>CRDT</CdtDbtInd>
+      </Bal>
+    </Stmt>
+  </BkToCstmrStmt>
+</Document>"""
+        statement = engine.ingest_statement(camt_xml, StatementFormat.CAMT_053, rail_code="VISA_CLEARING")
+        self.assertEqual(statement.statement_reference, "STMT-CARD-20261111")
+        self.assertEqual(statement.opening_balance, 1000000)
+        self.assertEqual(statement.closing_balance, 1049050)
+        self.assertEqual(len(statement.lines), 1)
+        self.assertEqual(statement.lines[0].amount, 49050)
+        self.assertEqual(statement.lines[0].direction, EntryDirection.CREDIT)
+
+        # 2. N:M Netting Matching: 5 captured transactions ($500.00 total) netted with fees to $490.50
+        txs = [{"id": f"tx_card_{i}", "amount": 10000} for i in range(1, 6)]  # 5 x $100 = 50,000 cents
+        batch_id = "BATCH_VISA_20261111_01"
+        interchange_fee = 800   # $8.00 interchange
+        scheme_fee = 150        # $1.50 scheme assessment
+        # Expected net = 50,000 - 800 - 150 = 49,050 cents
+
+        matches, breaks = engine.match_netting(
+            internal_batches=[{"batch_id": batch_id, "transactions": txs, "gross_amount": 50000}],
+            external_credits=[{"id": statement.lines[0].id, "amount": statement.lines[0].amount, "ref": batch_id}],
+            settlement_batch_id=batch_id,
+            interchange_fee=interchange_fee,
+            scheme_fee=scheme_fee
+        )
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0].topology, ReconTopology.NETTING)
+        self.assertEqual(matches[0].matched_amount, 49050)
+        self.assertEqual(matches[0].match_status, ReconMatchStatus.EXACT_MATCH)
+        self.assertEqual(len(breaks), 0)
 
     def test_f19_03_mt940_statement_parsing(self):
-        tag61 = ":61:2611101110CD100,00NTRFNONREF"
-        self.assertTrue(tag61.startswith(":61:"))
+        """Topology 3: Tripartite Escrow Matching (P2P Lending Custody & Waterfall Split) with SWIFT MT940."""
+        engine = ReconciliationEngine()
+
+        # 1. Parse structured SWIFT MT940 statement payload
+        mt940_text = """:20:MT940-20261111-ESCROW
+:25:CUSTODIAN_FBO_110400
+:28C:001/1
+:60F:C261111USD500000,00
+:61:2611111111CR1000,00NTRFLOAN_REPAY_7890//LOAN7890
+:86:BORROWER REPAYMENT LOAN_7890
+:62F:C261111USD501000,00
+-"""
+        statement = engine.ingest_statement(mt940_text, StatementFormat.MT940, rail_code="CUSTODIAN_FBO")
+        self.assertEqual(statement.opening_balance, 500000)
+        self.assertEqual(statement.closing_balance, 501000)
+        self.assertEqual(len(statement.lines), 1)
+        self.assertEqual(statement.lines[0].amount, 100000)  # $1,000.00 (100,000 cents)
+        self.assertEqual(statement.lines[0].direction, EntryDirection.CREDIT)
+
+        # 2. P2P Borrower Repayment Split: $1,000.00 repayment
+        # Servicing Fee = $15.00 (1,500 cents), Withholding Tax = $10.00 (1,000 cents), Net Investor Pool = $975.00 (97,500 cents)
+        borrower_repayment = 100000
+        platform_fee = 1500
+        tax = 1000
+        net_investor_pool = borrower_repayment - platform_fee - tax  # 97,500 cents
+
+        # 4 Fractional investors with shares 40%, 30%, 20%, 10%
+        shares = [
+            InvestorShare("inv_1", 4000),
+            InvestorShare("inv_2", 3000),
+            InvestorShare("inv_3", 2000),
+            InvestorShare("inv_4", 1000),
+        ]
+        allocations = self.waterfall.calculate_pro_rata_split(net_investor_pool, shares)
+        investor_payouts = [allocations["inv_1"], allocations["inv_2"], allocations["inv_3"], allocations["inv_4"]]
+        self.assertEqual(sum(investor_payouts), 97500)
+
+        # 3. 3-Way Tripartite Escrow Matching
+        matches, breaks = engine.match_tripartite_escrow(
+            borrower_repayment=borrower_repayment,
+            platform_fees=platform_fee,
+            withholding_tax=tax,
+            investor_payouts=investor_payouts,
+            bank_line_amount=statement.lines[0].amount,
+            loan_id="LOAN_7890"
+        )
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0].topology, ReconTopology.TRIPARTITE)
+        self.assertEqual(matches[0].matched_amount, 100000)
+        self.assertEqual(matches[0].match_status, ReconMatchStatus.EXACT_MATCH)
+        self.assertEqual(len(breaks), 0)
 
     def test_f19_04_bai2_lockbox_file_parsing(self):
-        record03 = "03,12345678,USD,010,1000000,,/"
-        self.assertTrue(record03.startswith("03,"))
+        """Topology 4: Streaming Intraday Matching (Dynamic QRIS, UPI & Real-Time Wallets) with BAI2 parsing."""
+        engine = ReconciliationEngine()
+
+        # 1. Parse structured BAI2 format lockbox statement
+        bai2_text = """01,BANK_CENTRAL,GATEWAY_PAY,261111,1200,1,80,1,2/
+02,MERCHANT_01,1,261111,,USD,2/
+03,12345678,USD,010,1000000,,,/
+16,115,50000,Z,QRIS_TX_4001,DYNAMIC QRIS PAYMENT/
+49,1050000,2/
+98,1050000,1,6/
+99,1050000,1,8/"""
+        statement = engine.ingest_statement(bai2_text, StatementFormat.BAI2, rail_code="LOCKBOX")
+        self.assertEqual(statement.account_number, "12345678")
+        self.assertEqual(len(statement.lines), 1)
+        self.assertEqual(statement.lines[0].amount, 50000)
+
+        # 2. Fast-Path Intraday Match (within 30s sliding window)
+        intent = {
+            "id": "intent_qris_01",
+            "ref": "QRIS_TX_4001",
+            "amount": 50000,
+            "timestamp": 1700000000.0
+        }
+        callback = {
+            "id": "cb_qris_01",
+            "ref": "QRIS_TX_4001",
+            "amount": 50000,
+            "timestamp": 1700000012.0  # +12 seconds (within 30s window)
+        }
+        matches, breaks = engine.match_streaming_intraday(
+            intents=[intent],
+            callbacks=[callback],
+            window_seconds=30.0
+        )
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0].topology, ReconTopology.STREAMING)
+        self.assertEqual(matches[0].match_status, ReconMatchStatus.EXACT_MATCH)
+        self.assertEqual(matches[0].matched_amount, 50000)
+        self.assertEqual(len(breaks), 0)
+
+        # 3. Slow-Path Drainage (callback outside sliding window)
+        delayed_intent = {
+            "id": "intent_qris_02",
+            "ref": "QRIS_TX_4002",
+            "amount": 25000,
+            "timestamp": 1700000000.0
+        }
+        delayed_callback = {
+            "id": "cb_qris_02",
+            "ref": "QRIS_TX_4002",
+            "amount": 25000,
+            "timestamp": 1700000045.0  # +45 seconds (> 30s window)
+        }
+        matches_late, breaks_late = engine.match_streaming_intraday(
+            intents=[delayed_intent],
+            callbacks=[delayed_callback],
+            window_seconds=30.0
+        )
+        self.assertEqual(len(matches_late), 0)
+        self.assertEqual(len(breaks_late), 1)
+        self.assertEqual(breaks_late[0].break_class, ReconBreakClass.TIMING_DELAY)
 
     def test_f19_05_end_of_day_batch_recon_signoff(self):
-        recon_status = {"date": "2026-11-10", "unmatched_count": 0, "status": "APPROVED"}
-        self.assertEqual(recon_status["status"], "APPROVED")
+        """Topology 5: Cryptographic On-Chain Matching (Web3 Stablecoin Ramps) & EOD Batch Signoff."""
+        engine = ReconciliationEngine()
+
+        # 1. Cryptographic On-Chain Reconciliation: Fiat deposit matched to verified EVM receipt
+        fiat_deposit = {
+            "id": "fiat_tx_01",
+            "amount": 100000,  # $1,000.00 USD
+            "currency": "USD",
+            "fx_rate": 1.0,
+            "dest_address": "0x71C...897"
+        }
+        blockchain_receipt = {
+            "tx_hash": "0x4f8b9a7c2d1e6f0b5a3c8e7d4b2a1f9c8e7d6b5a4c3e2f1a0b9c8d7e6f5a4b3c",
+            "status": "0x1",
+            "contract_address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",  # USDC
+            "token_amount": 100000,
+            "confirmations": 15,  # >= 12 block finality threshold
+            "dest_address": "0x71C...897"
+        }
+        matches, breaks = engine.match_cryptographic_on_chain(
+            fiat_entries=[fiat_deposit],
+            blockchain_receipts=[blockchain_receipt],
+            min_confirmations=12
+        )
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0].topology, ReconTopology.ON_CHAIN)
+        self.assertEqual(matches[0].match_status, ReconMatchStatus.EXACT_MATCH)
+        self.assertEqual(matches[0].matched_amount, 100000)
+        self.assertEqual(len(breaks), 0)
+
+        # 2. End-of-Day Batch Reconciliation Run & Signoff Audit Signature
+        run = ReconciliationRun(
+            run_id=str(uuid.uuid4()),
+            run_number="RUN-20261111-001",
+            topology=ReconTopology.ON_CHAIN,
+            scope_rail_code="USDC_POLYGON",
+            scope_currency="USD",
+            window_start=1700000000.0,
+            window_end=1700086400.0,
+            status="COMPLETED",
+            total_internal_records=1,
+            total_external_records=1,
+            matched_records_count=1,
+            break_records_count=0,
+            total_matched_volume=100000,
+            total_break_volume=0
+        )
+        sig_payload = f"{run.run_number}:{run.matched_records_count}:{run.total_matched_volume}:{run.status}"
+        audit_signature = hashlib.sha256(sig_payload.encode()).hexdigest()
+
+        self.assertEqual(run.status, "COMPLETED")
+        self.assertEqual(run.break_records_count, 0)
+        self.assertEqual(len(audit_signature), 64)
+        self.assertEqual(run.matched_records_count, run.total_internal_records)
 
     # =========================================================================
     # F20: Cloud Cost-Efficiency (FinOps) Strategy

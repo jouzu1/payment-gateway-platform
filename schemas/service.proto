@@ -577,3 +577,220 @@ message GetWaterfallSplitResponse {
   repeated InvestorWaterfallSplit splits = 10;
   google.protobuf.Timestamp created_at = 11;
 }
+
+// =============================================================================
+// 8. RECONCILIATION ENGINE SERVICE & MESSAGES (R3)
+// =============================================================================
+
+enum ReconciliationTopology {
+  TOPOLOGY_UNSPECIFIED = 0;
+  ONE_TO_ONE = 1;
+  NETTING = 2;
+  TRIPARTITE = 3;
+  STREAMING = 4;
+  ON_CHAIN = 5;
+}
+
+enum StatementFormat {
+  STATEMENT_FORMAT_UNSPECIFIED = 0;
+  CAMT_053 = 1;
+  CAMT_052 = 2;
+  CAMT_054 = 3;
+  MT940 = 4;
+  MT942 = 5;
+  BAI2 = 6;
+  NACHA = 7;
+  CSV_GENERIC = 8;
+  JSON_WEBHOOK = 9;
+  BLOCKCHAIN_RPC = 10;
+}
+
+enum ReconciliationRunStatus {
+  RUN_STATUS_UNSPECIFIED = 0;
+  RUN_PENDING = 1;
+  RUN_IN_PROGRESS = 2;
+  RUN_COMPLETED = 3;
+  RUN_COMPLETED_WITH_BREAKS = 4;
+  RUN_FAILED = 5;
+}
+
+enum ReconciliationMatchStatus {
+  MATCH_STATUS_UNSPECIFIED = 0;
+  MATCH_EXACT = 1;
+  MATCH_TOLERANCE = 2;
+  MATCH_MANUAL = 3;
+  MATCH_UNMATCHED_INTERNAL = 4;
+  MATCH_UNMATCHED_EXTERNAL = 5;
+  MATCH_AMOUNT_DISCREPANCY = 6;
+}
+
+enum ReconciliationBreakClass {
+  BREAK_CLASS_UNSPECIFIED = 0;
+  BREAK_UNMATCHED_INTERNAL = 1;
+  BREAK_UNMATCHED_EXTERNAL = 2;
+  BREAK_AMOUNT_MISMATCH = 3;
+  BREAK_FEE_DISCREPANCY = 4;
+  BREAK_TIMING_DRIFT = 5;
+  BREAK_CURRENCY_MISMATCH = 6;
+  BREAK_FRACTIONAL_ROUNDING = 7;
+  BREAK_CHAIN_REORG = 8;
+}
+
+enum ReconciliationBreakStatus {
+  BREAK_STATUS_UNSPECIFIED = 0;
+  BREAK_OPEN = 1;
+  BREAK_IN_INVESTIGATION = 2;
+  BREAK_AUTO_RESOLVED = 3;
+  BREAK_MANUALLY_RESOLVED = 4;
+  BREAK_WRITTEN_OFF = 5;
+  BREAK_ESCALATED = 6;
+}
+
+enum BreakResolutionAction {
+  RESOLUTION_ACTION_UNSPECIFIED = 0;
+  WRITE_OFF_VARIANCE = 1;
+  FORCE_MATCH = 2;
+  RETRY_SETTLEMENT = 3;
+  TRANSIT_TIMING_HOLD = 4;
+  MANUAL_ADJUSTMENT = 5;
+}
+
+service ReconciliationService {
+  rpc IngestStatement(IngestStatementRequest) returns (IngestStatementResponse);
+  rpc TriggerReconciliation(TriggerReconciliationRequest) returns (TriggerReconciliationResponse);
+  rpc GetReconciliationSummary(GetReconciliationSummaryRequest) returns (GetReconciliationSummaryResponse);
+  rpc ListBreaks(ListBreaksRequest) returns (ListBreaksResponse);
+  rpc ResolveBreak(ResolveBreakRequest) returns (ResolveBreakResponse);
+}
+
+message IngestStatementRequest {
+  string rail_code = 1;
+  string bank_code = 2;
+  StatementFormat statement_format = 3;
+  string statement_reference = 4;
+  string account_number = 5;
+  string currency = 6;
+  string statement_date = 7; // YYYY-MM-DD
+  bytes raw_payload = 8;
+  Money opening_balance = 9;
+  Money closing_balance = 10;
+  string file_hash = 11;
+  map<string, string> metadata = 12;
+}
+
+message IngestStatementResponse {
+  string statement_id = 1;
+  string statement_reference = 2;
+  int32 total_lines_parsed = 3;
+  Money total_debit = 4;
+  Money total_credit = 5;
+  string status = 6;
+  google.protobuf.Timestamp ingested_at = 7;
+}
+
+message TriggerReconciliationRequest {
+  string idempotency_key = 1;
+  ReconciliationTopology topology = 2;
+  string rail_code = 3;
+  string currency = 4;
+  google.protobuf.Timestamp window_start = 5;
+  google.protobuf.Timestamp window_end = 6;
+  int64 auto_resolve_tolerance_minor = 7;
+  string initiated_by = 8;
+}
+
+message TriggerReconciliationResponse {
+  string run_id = 1;
+  string run_number = 2;
+  ReconciliationRunStatus status = 3;
+  google.protobuf.Timestamp started_at = 4;
+}
+
+message GetReconciliationSummaryRequest {
+  string run_id = 1;
+}
+
+message GetReconciliationSummaryResponse {
+  string run_id = 1;
+  string run_number = 2;
+  ReconciliationTopology topology = 3;
+  ReconciliationRunStatus status = 4;
+  int32 total_internal_records = 5;
+  int32 total_gateway_records = 6;
+  int32 total_external_records = 7;
+  int32 matched_count = 8;
+  int32 break_count = 9;
+  Money total_matched_volume = 10;
+  Money total_break_volume = 11;
+  google.protobuf.Timestamp window_start = 12;
+  google.protobuf.Timestamp window_end = 13;
+  google.protobuf.Timestamp completed_at = 14;
+  string audit_signature = 15;
+}
+
+message ListBreaksRequest {
+  string run_id = 1;
+  string settlement_batch_id = 2;
+  ReconciliationBreakClass break_class = 3;
+  ReconciliationBreakStatus status = 4;
+  int32 page_size = 5;
+  string page_token = 6;
+}
+
+message ReconciliationBreakItem {
+  string break_id = 1;
+  string break_number = 2;
+  string run_id = 3;
+  string settlement_batch_id = 4;
+  ReconciliationBreakClass break_class = 5;
+  ReconciliationBreakStatus status = 6;
+  string transaction_id = 7;
+  string payout_order_id = 8;
+  string statement_line_id = 9;
+  string external_reference = 10;
+  Money expected_money = 11;
+  Money actual_money = 12;
+  Money discrepancy_money = 13;
+  google.protobuf.Timestamp created_at = 14;
+}
+
+message ListBreaksResponse {
+  repeated ReconciliationBreakItem breaks = 1;
+  string next_page_token = 2;
+  int32 total_breaks = 3;
+}
+
+message ResolveBreakRequest {
+  string break_id = 1;
+  BreakResolutionAction action = 2;
+  string notes = 3;
+  string variance_account_id = 4;
+  string resolved_by = 5;
+  string idempotency_key = 6;
+}
+
+message ResolveBreakResponse {
+  string break_id = 1;
+  ReconciliationBreakStatus status = 2;
+  string resolution_action = 3;
+  string journal_entry_id = 4;
+  string settlement_batch_status = 5;
+  google.protobuf.Timestamp resolved_at = 6;
+}
+
+message ReconciliationMatch {
+  string match_id = 1;
+  string run_id = 2;
+  ReconciliationTopology topology = 3;
+  ReconciliationMatchStatus status = 4;
+  string internal_transaction_id = 5;
+  string internal_journal_entry_id = 6;
+  string statement_line_id = 7;
+  string payout_order_id = 8;
+  string external_reference = 9;
+  Money internal_amount = 10;
+  Money external_amount = 11;
+  Money variance_amount = 12;
+  double confidence_score = 13;
+  google.protobuf.Timestamp matched_at = 14;
+}

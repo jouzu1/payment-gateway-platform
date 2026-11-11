@@ -414,6 +414,389 @@ paths:
               schema:
                 $ref: '#/components/schemas/WebhookEndpoint'
 
+  /v1/reconciliation/statements:
+    post:
+      summary: Upload Clearing Statement File
+      description: Ingests external bank or network statement file (ISO 20022 camt.053 XML, SWIFT MT940, BAI2, NACHA, CSV) with cryptographic verification.
+      operationId: uploadClearingStatement
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+                - statement_format
+                - rail_code
+                - statement_date
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Binary or text content of the bank clearing statement.
+                statement_format:
+                  $ref: '#/components/schemas/StatementFormat'
+                rail_code:
+                  type: string
+                  example: "BI_FAST"
+                bank_code:
+                  type: string
+                  example: "BCA_ID"
+                account_number:
+                  type: string
+                  example: "0082710399"
+                statement_date:
+                  type: string
+                  format: date
+                  example: "2026-11-10"
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UploadClearingStatementRequest'
+      responses:
+        '201':
+          description: Statement successfully ingested and queued for parsing.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClearingStatement'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '409':
+          $ref: '#/components/responses/IdempotencyConflictError'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntityError'
+    get:
+      summary: List Clearing Statements
+      description: Retrieves paginated clearing statements filtered by rail and date.
+      operationId: listClearingStatements
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/StartingAfter'
+        - name: rail_code
+          in: query
+          schema:
+            type: string
+        - name: bank_code
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/StatementStatus'
+        - name: from_date
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: to_date
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Paginated list of clearing statements.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    example: list
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ClearingStatement'
+                  has_more:
+                    type: boolean
+
+  /v1/reconciliation/statements/{id}:
+    get:
+      summary: Retrieve Clearing Statement Details
+      description: Retrieves metadata, balance summary, line counts, and parsing status for a specific clearing statement.
+      operationId: getClearingStatement
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Clearing statement details.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClearingStatement'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /v1/reconciliation/statements/{id}/lines:
+    get:
+      summary: List Statement Lines
+      description: Retrieves paginated individual normalized statement lines for an ingested statement.
+      operationId: listStatementLines
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/StartingAfter'
+        - name: reconciliation_status
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Paginated list of statement lines.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    example: list
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/StatementLine'
+                  has_more:
+                    type: boolean
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /v1/reconciliation/runs:
+    post:
+      summary: Trigger Reconciliation Run
+      description: Initiates automated matching across internal transactions, ledger journal entries, and clearing statements.
+      operationId: triggerReconciliationRun
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TriggerReconciliationRunRequest'
+      responses:
+        '202':
+          description: Reconciliation run accepted and processing.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReconciliationRun'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '409':
+          $ref: '#/components/responses/IdempotencyConflictError'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntityError'
+    get:
+      summary: List Reconciliation Runs
+      description: Retrieves paginated reconciliation runs filtered by status or topology.
+      operationId: listReconciliationRuns
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/StartingAfter'
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/ReconciliationRunStatus'
+        - name: topology
+          in: query
+          schema:
+            $ref: '#/components/schemas/ReconciliationTopology'
+        - name: rail_code
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Paginated reconciliation runs.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    example: list
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ReconciliationRun'
+                  has_more:
+                    type: boolean
+
+  /v1/reconciliation/runs/{id}:
+    get:
+      summary: Retrieve Reconciliation Run Status & Audit Summary
+      description: Returns run execution metrics, total matched/break counts, volumes, and cryptographic audit sign-off.
+      operationId: getReconciliationRun
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Run details and audit summary.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReconciliationRunDetail'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /v1/reconciliation/runs/{id}/matches:
+    get:
+      summary: List Matched Records for Run
+      description: Retrieves paginated matched transaction associations and confidence scores.
+      operationId: listReconciliationMatches
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/StartingAfter'
+        - name: match_status
+          in: query
+          schema:
+            $ref: '#/components/schemas/ReconciliationMatchStatus'
+      responses:
+        '200':
+          description: Paginated matched transaction records.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    example: list
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ReconciliationMatch'
+                  has_more:
+                    type: boolean
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /v1/reconciliation/breaks:
+    get:
+      summary: List Reconciliation Breaks
+      description: Query open and resolved reconciliation breaks filtered by run, settlement batch, or break class.
+      operationId: listReconciliationBreaks
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/StartingAfter'
+        - name: run_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: settlement_batch_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: break_class
+          in: query
+          schema:
+            $ref: '#/components/schemas/ReconciliationBreakClass'
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/ReconciliationBreakStatus'
+      responses:
+        '200':
+          description: Paginated list of reconciliation breaks.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    example: list
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ReconciliationBreak'
+                  has_more:
+                    type: boolean
+
+  /v1/reconciliation/breaks/{id}:
+    get:
+      summary: Inspect Reconciliation Break
+      description: Detailed breakdown of reconciliation discrepancies and linked records.
+      operationId: getReconciliationBreak
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Break inspection details.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReconciliationBreakDetail'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /v1/reconciliation/breaks/{id}/resolve:
+    post:
+      summary: Resolve Reconciliation Break
+      description: Applies deterministic resolution to an open break (variance write-off to 510000, force match, retry, transit hold).
+      operationId: resolveReconciliationBreak
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResolveReconciliationBreakRequest'
+      responses:
+        '200':
+          description: Break resolved and linked ledger journal entry generated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResolveReconciliationBreakResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntityError'
+
 components:
   securitySchemes:
     BearerAuth:
@@ -1089,3 +1472,610 @@ components:
         - SGD
         - JPY
       example: "USD"
+
+    StatementFormat:
+      type: string
+      enum:
+        - CAMT_053
+        - CAMT_052
+        - CAMT_054
+        - MT940
+        - MT942
+        - BAI2
+        - NACHA
+        - CSV
+        - JSON_WEBHOOK
+        - BLOCKCHAIN_RPC
+
+    StatementStatus:
+      type: string
+      enum:
+        - INGESTED
+        - PARSED
+        - PROCESSING
+        - RECONCILED
+        - ERROR
+        - SUPERSEDED
+
+    ReconciliationTopology:
+      type: string
+      enum:
+        - ONE_TO_ONE
+        - NETTING
+        - TRIPARTITE
+        - STREAMING
+        - ON_CHAIN
+
+    ReconciliationRunStatus:
+      type: string
+      enum:
+        - PENDING
+        - IN_PROGRESS
+        - COMPLETED
+        - COMPLETED_WITH_BREAKS
+        - FAILED
+        - CANCELLED
+
+    ReconciliationMatchStatus:
+      type: string
+      enum:
+        - EXACT_MATCH
+        - TOLERANCE_MATCH
+        - MANUAL_MATCH
+        - UNMATCHED_INTERNAL
+        - UNMATCHED_EXTERNAL
+        - AMOUNT_DISCREPANCY
+        - TIMING_DELAY
+        - SKIPPED_ALREADY_PROCESSED
+
+    ReconciliationBreakClass:
+      type: string
+      enum:
+        - UNMATCHED_INTERNAL
+        - UNMATCHED_EXTERNAL
+        - AMOUNT_MISMATCH
+        - FEE_DISCREPANCY
+        - TIMING_DELAY
+        - FRACTIONAL_ROUNDING_BREAK
+        - CHAIN_REORG_BREAK
+        - CURRENCY_MISMATCH
+
+    ReconciliationBreakStatus:
+      type: string
+      enum:
+        - OPEN
+        - INVESTIGATING
+        - PENDING_APPROVAL
+        - AUTO_RESOLVED
+        - RESOLVED
+        - WRITTEN_OFF
+        - ESCALATED
+
+    BreakResolutionAction:
+      type: string
+      enum:
+        - WRITE_OFF_VARIANCE
+        - FORCE_MATCH
+        - RETRY_SETTLEMENT
+        - TRANSIT_TIMING_HOLD
+        - ALLOCATE_SUSPENSE
+        - MANUAL_REPAIR
+        - REJECT_RECORD
+
+    UploadClearingStatementRequest:
+      type: object
+      required:
+        - statement_reference
+        - statement_format
+        - rail_code
+        - statement_date
+        - raw_payload
+      properties:
+        statement_reference:
+          type: string
+          example: "STMT-BCA-20261110-001"
+        statement_format:
+          $ref: '#/components/schemas/StatementFormat'
+        rail_code:
+          type: string
+          example: "BI_FAST"
+        bank_code:
+          type: string
+          example: "BCA_ID"
+        account_number:
+          type: string
+          example: "0082710399"
+        currency:
+          $ref: '#/components/schemas/Currency'
+        statement_date:
+          type: string
+          format: date
+          example: "2026-11-10"
+        opening_balance:
+          type: integer
+          description: Opening balance in minor currency units (cents).
+          example: 10000000
+        closing_balance:
+          type: integer
+          description: Closing balance in minor currency units (cents).
+          example: 14500000
+        raw_payload:
+          type: string
+          description: Raw statement text or base64-encoded file payload.
+
+    ClearingStatement:
+      type: object
+      required:
+        - id
+        - statement_reference
+        - rail_code
+        - statement_format
+        - currency
+        - statement_date
+        - status
+        - file_hash
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        statement_reference:
+          type: string
+          example: "STMT-BCA-20261110-001"
+        rail_code:
+          type: string
+          example: "BI_FAST"
+        bank_code:
+          type: string
+          example: "BCA_ID"
+        statement_format:
+          $ref: '#/components/schemas/StatementFormat'
+        account_number:
+          type: string
+          example: "0082710399"
+        currency:
+          $ref: '#/components/schemas/Currency'
+        statement_date:
+          type: string
+          format: date
+          example: "2026-11-10"
+        opening_balance:
+          type: integer
+          description: Opening balance in minor units.
+          example: 10000000
+        closing_balance:
+          type: integer
+          description: Closing balance in minor units.
+          example: 14500000
+        total_debit_amount:
+          type: integer
+          description: Aggregated debit amount in minor units.
+          example: 2500000
+        total_credit_amount:
+          type: integer
+          description: Aggregated credit amount in minor units.
+          example: 7000000
+        total_lines_count:
+          type: integer
+          example: 154
+        file_hash:
+          type: string
+          description: SHA-256 hash of the raw statement file payload.
+          example: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        raw_payload_url:
+          type: string
+          format: uri
+          description: Secure S3 URL to the raw immutable statement file.
+        replaces_statement_id:
+          type: string
+          format: uuid
+          description: UUID of previous statement replaced or superseded by this file.
+        status:
+          $ref: '#/components/schemas/StatementStatus'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    StatementLine:
+      type: object
+      required:
+        - id
+        - clearing_statement_id
+        - line_number
+        - bank_transaction_ref
+        - direction
+        - amount
+        - currency
+        - value_date
+        - booking_date
+        - reconciliation_status
+        - line_hash
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        clearing_statement_id:
+          type: string
+          format: uuid
+        line_number:
+          type: integer
+          description: 1-based sequential line number within statement file.
+          example: 1
+        bank_transaction_ref:
+          type: string
+          description: External bank transaction reference or narrative.
+          example: "TXN-BCA-987102934"
+        end_to_end_id:
+          type: string
+          description: ISO 20022 EndToEndId or unique remittance ID.
+          example: "E2E-20261110-00123"
+        direction:
+          type: string
+          enum:
+            - DEBIT
+            - CREDIT
+        amount:
+          type: integer
+          description: Gross line amount in minor currency units (cents).
+          example: 500000
+        fee_amount:
+          type: integer
+          description: Deducted fee amount in minor currency units (cents).
+          example: 2500
+        net_amount:
+          type: integer
+          description: Net line amount in minor currency units (cents).
+          example: 497500
+        currency:
+          $ref: '#/components/schemas/Currency'
+        value_date:
+          type: string
+          format: date
+          example: "2026-11-10"
+        booking_date:
+          type: string
+          format: date
+          description: Partition key date when transaction booked.
+          example: "2026-11-10"
+        reconciliation_status:
+          type: string
+          example: "RECONCILED"
+        line_hash:
+          type: string
+          description: SHA-256 composite line hash for worker retry idempotency.
+          example: "7e8b91a...3f"
+        raw_data:
+          type: object
+          description: Additional raw structured fields parsed from the rail statement.
+        created_at:
+          type: string
+          format: date-time
+
+    TriggerReconciliationRunRequest:
+      type: object
+      required:
+        - topology
+        - rail_code
+        - currency
+        - window_start
+        - window_end
+      properties:
+        topology:
+          $ref: '#/components/schemas/ReconciliationTopology'
+        rail_code:
+          type: string
+          example: "BI_FAST"
+        currency:
+          $ref: '#/components/schemas/Currency'
+        window_start:
+          type: string
+          format: date-time
+          example: "2026-11-10T00:00:00Z"
+        window_end:
+          type: string
+          format: date-time
+          example: "2026-11-10T23:59:59Z"
+        auto_resolve_tolerance_minor:
+          type: integer
+          description: Minor units tolerance threshold for auto fee write-off (e.g. 200 for $2.00).
+          example: 200
+        initiated_by:
+          type: string
+          example: "OPS_PORTAL"
+
+    ReconciliationRun:
+      type: object
+      required:
+        - id
+        - run_number
+        - topology
+        - scope_rail_code
+        - scope_currency
+        - window_start
+        - window_end
+        - status
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        run_number:
+          type: string
+          example: "RECON-20261111-001"
+        topology:
+          $ref: '#/components/schemas/ReconciliationTopology'
+        scope_rail_code:
+          type: string
+          example: "BI_FAST"
+        scope_currency:
+          $ref: '#/components/schemas/Currency'
+        window_start:
+          type: string
+          format: date-time
+        window_end:
+          type: string
+          format: date-time
+        status:
+          $ref: '#/components/schemas/ReconciliationRunStatus'
+        total_internal_records:
+          type: integer
+          example: 12500
+        total_gateway_records:
+          type: integer
+          example: 12500
+        total_external_records:
+          type: integer
+          example: 12498
+        matched_records_count:
+          type: integer
+          example: 12495
+        break_records_count:
+          type: integer
+          example: 5
+        total_matched_volume:
+          type: integer
+          description: Total matched volume in minor currency units (cents).
+          example: 8750000000
+        total_break_volume:
+          type: integer
+          description: Total discrepancy volume in minor currency units (cents).
+          example: 350000
+        initiated_by:
+          type: string
+          example: "SYSTEM_SCHEDULER"
+        started_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    ReconciliationRunDetail:
+      type: object
+      required:
+        - run
+        - audit_signature
+      properties:
+        run:
+          $ref: '#/components/schemas/ReconciliationRun'
+        audit_signature:
+          type: string
+          description: HMAC-SHA256 cryptographic attestation signature of run results.
+          example: "sha256:7e8b91a2f5e3d...c4b1"
+        metrics_breakdown:
+          type: object
+          properties:
+            exact_matches:
+              type: integer
+              example: 12490
+            tolerance_matches:
+              type: integer
+              example: 5
+            unmatched_internal:
+              type: integer
+              example: 3
+            unmatched_external:
+              type: integer
+              example: 2
+            amount_discrepancies:
+              type: integer
+              example: 0
+
+    ReconciliationMatch:
+      type: object
+      required:
+        - id
+        - reconciliation_run_id
+        - match_topology
+        - match_status
+        - internal_amount
+        - external_amount
+        - variance_amount
+        - currency
+        - matched_at
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        reconciliation_run_id:
+          type: string
+          format: uuid
+        match_topology:
+          $ref: '#/components/schemas/ReconciliationTopology'
+        match_status:
+          $ref: '#/components/schemas/ReconciliationMatchStatus'
+        internal_transaction_id:
+          type: string
+          format: uuid
+        internal_journal_entry_id:
+          type: string
+          format: uuid
+        statement_line_id:
+          type: string
+          format: uuid
+        payout_order_id:
+          type: string
+          format: uuid
+        external_reference:
+          type: string
+          example: "TXN-BCA-987102934"
+        internal_amount:
+          type: integer
+          description: Internal recorded amount in minor units (cents).
+          example: 500000
+        external_amount:
+          type: integer
+          description: External bank recorded amount in minor units (cents).
+          example: 500000
+        variance_amount:
+          type: integer
+          description: Discrepancy amount in minor units (cents).
+          example: 0
+        currency:
+          $ref: '#/components/schemas/Currency'
+        confidence_score:
+          type: number
+          format: float
+          description: Matching algorithm confidence score (0.0000 to 1.0000).
+          example: 1.0000
+        matched_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+
+    ReconciliationBreak:
+      type: object
+      required:
+        - id
+        - break_number
+        - reconciliation_run_id
+        - break_class
+        - discrepancy_amount
+        - currency
+        - status
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        break_number:
+          type: string
+          example: "BRK-20261111-0001"
+        reconciliation_run_id:
+          type: string
+          format: uuid
+        settlement_batch_id:
+          type: string
+          format: uuid
+          description: Associated settlement batch gated by this break.
+        break_class:
+          $ref: '#/components/schemas/ReconciliationBreakClass'
+        internal_transaction_id:
+          type: string
+          format: uuid
+        payout_order_id:
+          type: string
+          format: uuid
+        statement_line_id:
+          type: string
+          format: uuid
+        expected_amount:
+          type: integer
+          description: Expected financial amount in minor units.
+          example: 500000
+        actual_amount:
+          type: integer
+          description: Actual financial amount from bank statement in minor units.
+          example: 498500
+        discrepancy_amount:
+          type: integer
+          description: Absolute variance amount in minor units.
+          example: 1500
+        currency:
+          $ref: '#/components/schemas/Currency'
+        status:
+          $ref: '#/components/schemas/ReconciliationBreakStatus'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    ReconciliationBreakDetail:
+      type: object
+      required:
+        - break
+      properties:
+        break:
+          $ref: '#/components/schemas/ReconciliationBreak'
+        resolution_action:
+          $ref: '#/components/schemas/BreakResolutionAction'
+        resolution_journal_entry_id:
+          type: string
+          format: uuid
+        assigned_to:
+          type: string
+          example: "ops.reconciliation@gateway.platform"
+        resolution_notes:
+          type: string
+          example: "Exchange fee tier variance approved under SLA; posted to 510000."
+        resolved_at:
+          type: string
+          format: date-time
+
+    ResolveReconciliationBreakRequest:
+      type: object
+      required:
+        - action
+        - notes
+      properties:
+        action:
+          $ref: '#/components/schemas/BreakResolutionAction'
+        notes:
+          type: string
+          example: "Interchange tier variance below threshold; wrote off to 510000."
+        variance_account_id:
+          type: string
+          format: uuid
+          description: GL account ID for variance allocation (defaults to 510000 Bank Switch Fee Variance Expense).
+
+    ResolveReconciliationBreakResponse:
+      type: object
+      required:
+        - break_id
+        - status
+        - resolution_action
+        - resolved_at
+      properties:
+        break_id:
+          type: string
+          format: uuid
+        status:
+          $ref: '#/components/schemas/ReconciliationBreakStatus'
+        resolution_action:
+          $ref: '#/components/schemas/BreakResolutionAction'
+        resolution_journal_entry_id:
+          type: string
+          format: uuid
+          description: Double-entry ledger journal entry ID posted to balance the variance.
+        settlement_batch_status:
+          type: string
+          description: Updated status of associated settlement batch (e.g. UNBLOCKED, SETTLED).
+          example: "UNBLOCKED"
+        resolved_at:
+          type: string
+          format: date-time
